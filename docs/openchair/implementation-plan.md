@@ -11,12 +11,23 @@
 - Projection API contract
 - Happy-path and failure tests
 
-## Next: persistence and commands
+## Done: persistence and commands
 
-- Implement appointment and workflow repositories.
-- Commit workflow state, history, and outbox effects atomically.
-- Add command receipt handling for idempotency and version conflicts.
-- Implement create, publish, cancel, expire, and complete handlers.
+- [x] Appointment repository (`appointments/d1-repository.ts`) creating the
+  appointment and its `OPEN_SLOT` workflow in one batch.
+- [x] Pure commit planner (`workflow/commit-plan.ts`) and the single write path
+  (`workflow/repository.ts`) committing state, history, and one outbox event
+  per effect together.
+- [x] Command receipts for idempotency and replay
+  (`shared/command-receipts.ts`).
+- [x] Publish, cancel, expire, and complete handlers (`workflow/commands.ts`).
+- [x] Funding moved onto the shared commit path, which also fixed workflow
+  effects being dropped instead of published on the webhook path.
+- [ ] Mutation routes under `app/api/v1/openchair`.
+
+Concurrency rests on two guards: the UPDATE matches only the version the
+decision was made against, and the `(appointment_id, workflow_version)` unique
+index rejects a second row for the same version, aborting the batch.
 
 ## Next: patient selection
 
@@ -25,12 +36,19 @@
 - Enforce consent and verification in candidate selection.
 - Preserve candidate order and prevent edits after outreach begins.
 
-## Next: appointment funding
+## Done: appointment funding
 
-- Add a Stripe event dispatcher separate from subscription projection.
-- Create sponsor Checkout and patient Checkout through the provider port.
-- Confirm both payments only through verified webhooks.
-- Add refund and balanced appointment-ledger behavior.
+- [x] Stripe event dispatcher separate from subscription projection
+  (`app/api/webhooks/stripe/appointment-funding`).
+- [x] Sponsor and patient Checkout through the provider port
+  (`createAppointmentCheckout`).
+- [x] Payments confirmed only through verified webhooks
+  (`lib/openchair/funding/webhook.ts`).
+- [x] Refunds requested through the port and finalized by the verified
+  `charge.refunded` event (`requestAppointmentRefund`).
+
+Funding now commits workflow facts through the shared workflow repository
+rather than its own inline `applyWorkflowFact` plus `db.batch`.
 
 ## Outreach integration bridge
 
@@ -39,8 +57,9 @@
 - [x] Translate generic Vapi outcomes into OpenChair outreach facts.
 - [x] Wait for Workflow reservation before stopping remaining candidates.
 - [x] Add dead-letter and operator-recovery orchestration.
-- [ ] Compose the bridge with the live D1 workflow command repository once the
-  persistence-and-commands checkpoint above is complete.
+- [ ] Compose the bridge with the live D1 workflow repository. The blocking
+  checkpoint is now complete, and `workflow.outreach_requested` reaches the
+  outbox, so this is the next unblocked step.
 
 ## Next: live product page
 

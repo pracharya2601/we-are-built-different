@@ -2,6 +2,7 @@ import { getDb } from "@/db";
 import { withApiAuth } from "@/lib/auth";
 import { fundingErrorResponse } from "@/lib/openchair/funding/errors";
 import { approveAppointmentFunding } from "@/lib/openchair/funding/service";
+import { requireAppointmentSponsor } from "@/lib/openchair/sponsors";
 
 type RouteContext = {
   params: Promise<{ appointmentId: string }>;
@@ -15,8 +16,10 @@ export const POST = withApiAuth(
   ) {
     try {
       const { appointmentId } = await context.params;
+      const db = getDb();
+      await requireAppointmentSponsor(db, auth, appointmentId);
       const fundingRequest = await approveAppointmentFunding(
-        getDb(),
+        db,
         {
           workspaceId: auth.workspaceId,
           appointmentId,
@@ -31,5 +34,5 @@ export const POST = withApiAuth(
       return fundingErrorResponse(error);
     }
   },
-  "funds:manage",
+  "product:use",
 );

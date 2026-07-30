@@ -782,6 +782,50 @@ export const callAttempts = sqliteTable(
   ],
 );
 
+/**
+ * Live transcript lines for a call that is still on the phone. These rows are
+ * deliberately short-lived: `finishCallAttempt` purges an attempt's lines as
+ * soon as it records the outcome, and the minute cron sweeps anything an
+ * end-of-call callback failed to close. Nothing transcript-shaped survives the
+ * call, so the retained record stays the structured outcome plus summary.
+ */
+export const callTranscriptLines = sqliteTable(
+  "call_transcript_lines",
+  {
+    id: text("id").primaryKey(),
+    attemptId: text("attempt_id")
+      .notNull()
+      .references(() => callAttempts.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => callJobs.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "restrict" }),
+    speaker: text("speaker", { enum: ["agent", "recipient"] }).notNull(),
+    textCiphertext: text("text_ciphertext").notNull(),
+    /** Hash of speaker + text + provider timestamp; makes replays idempotent. */
+    fingerprint: text("fingerprint").notNull(),
+    spokenAt: integer("spoken_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("call_transcript_lines_attempt_fingerprint_uidx").on(
+      table.attemptId,
+      table.fingerprint,
+    ),
+    check(
+      "call_transcript_lines_speaker_check",
+      sql`${table.speaker} in ('agent', 'recipient')`,
+    ),
+    index("call_transcript_lines_attempt_spoken_idx").on(
+      table.attemptId,
+      table.spokenAt,
+    ),
+    index("call_transcript_lines_created_idx").on(table.createdAt),
+  ],
+);
+
 export const providerInboxEvents = sqliteTable(
   "provider_inbox_events",
   {
@@ -1251,6 +1295,43 @@ export const openchairCandidates = sqliteTable(
       sql`${table.status} in ('SELECTED', 'QUEUED', 'CALLING', 'NO_ANSWER', 'DECLINED', 'ACCEPTED', 'SKIPPED', 'CANCELED')`,
     ),
     index("openchair_candidates_workspace_appointment_idx").on(
+      table.workspaceId,
+      table.appointmentId,
+      table.status,
+    ),
+  ],
+);
+
+export const openchairAppointmentSponsors = sqliteTable(
+  "openchair_appointment_sponsors",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "restrict" }),
+    appointmentId: text("appointment_id")
+      .notNull()
+      .references(() => openchairAppointments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    status: text("status", { enum: ["ACTIVE", "REVOKED"] })
+      .notNull()
+      .default("ACTIVE"),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("openchair_appointment_sponsors_appointment_user_uidx").on(
+      table.appointmentId,
+      table.userId,
+    ),
+    check(
+      "openchair_appointment_sponsors_status_check",
+      sql`${table.status} in ('ACTIVE', 'REVOKED')`,
+    ),
+    index("openchair_appointment_sponsors_workspace_appointment_idx").on(
       table.workspaceId,
       table.appointmentId,
       table.status,

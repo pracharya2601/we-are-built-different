@@ -9,6 +9,7 @@ import {
 import { PlatformOwnerGuard } from "@/lib/auth";
 import { getDb } from "@/db";
 import { CallConsole } from "./call-console";
+import { LiveCallBoard } from "./live-call-board";
 
 export default function CallsPage() {
   return (
@@ -119,6 +120,7 @@ async function CallsPageContent() {
         </p>
       </section>
 
+      <LiveCallBoard />
       <CallConsole calls={calls} />
     </>
   );

@@ -4,18 +4,26 @@ import {
   desc,
   eq,
   inArray,
+  lt,
   lte,
   ne,
+  notInArray,
 } from "drizzle-orm";
 
 import type { AppDatabase } from "../../db";
-import { callAttempts, callJobs } from "../../db/schema";
-import { createId } from "../data";
-import type {
-  CallOutcome,
-  CallQueue,
-  CallQueueMessage,
-} from "./types";
+import {
+  callAttempts,
+  callJobs,
+  callTranscriptLines,
+} from "../../db/schema.ts";
+import { createId } from "../data/ids.ts";
+import {
+  ACTIVE_CALL_ATTEMPT_STATUSES,
+  type CallOutcome,
+  type CallQueue,
+  type CallQueueMessage,
+  type CallTranscriptSpeaker,
+} from "./types.ts";
 
 export async function createCallJob(
   db: AppDatabase,
@@ -394,6 +402,9 @@ export async function finishCallAttempt(
     .returning({ id: callAttempts.id });
   if (!endedAttempt) return;
 
+  // The live transcript exists only while the recipient is on the phone.
+  await purgeCallTranscript(db, input.attemptId);
+
   const retryable = [
     "no_answer",
     "busy",
@@ -450,6 +461,155 @@ export async function finishCallAttempt(
       updatedAt: new Date(),
     })
     .where(eq(callJobs.id, job.id));
+}
+
+/**
+ * Records one finalized utterance. Duplicate provider deliveries collapse on
+ * the attempt+fingerprint index, so a replayed callback cannot double a line.
+ */
+export async function appendCallTranscriptLine(
+  db: AppDatabase,
+  input: {
+    attemptId: string;
+    jobId: string;
+    workspaceId: string;
+    speaker: CallTranscriptSpeaker;
+    textCiphertext: string;
+    fingerprint: string;
+    spokenAt: Date;
+  },
+): Promise<void> {
+  await db
+    .insert(callTranscriptLines)
+    .values({
+      id: createId("clt"),
+      attemptId: input.attemptId,
+      jobId: input.jobId,
+      workspaceId: input.workspaceId,
+      speaker: input.speaker,
+      textCiphertext: input.textCiphertext,
+      fingerprint: input.fingerprint,
+      spokenAt: input.spokenAt,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing({
+      target: [
+        callTranscriptLines.attemptId,
+        callTranscriptLines.fingerprint,
+      ],
+    });
+}
+
+export async function listCallTranscriptLines(
+  db: AppDatabase,
+  attemptIds: string[],
+) {
+  if (attemptIds.length === 0) return [];
+  return db
+    .select({
+      attemptId: callTranscriptLines.attemptId,
+      speaker: callTranscriptLines.speaker,
+      textCiphertext: callTranscriptLines.textCiphertext,
+      spokenAt: callTranscriptLines.spokenAt,
+      createdAt: callTranscriptLines.createdAt,
+    })
+    .from(callTranscriptLines)
+    .where(inArray(callTranscriptLines.attemptId, attemptIds))
+    .orderBy(
+      asc(callTranscriptLines.spokenAt),
+      asc(callTranscriptLines.createdAt),
+    );
+}
+
+export async function purgeCallTranscript(
+  db: AppDatabase,
+  attemptId: string,
+): Promise<void> {
+  await db
+    .delete(callTranscriptLines)
+    .where(eq(callTranscriptLines.attemptId, attemptId));
+}
+
+/**
+ * Safety net for a lost end-of-call callback: drop lines whose attempt is no
+ * longer live, and any line older than the retention ceiling regardless of
+ * attempt state. Runs on the minute cron so a stalled call cannot leave a
+ * transcript behind indefinitely.
+ */
+export async function purgeStaleCallTranscripts(
+  db: AppDatabase,
+  now = new Date(),
+  maximumAgeMinutes = 60,
+): Promise<void> {
+  const liveAttempts = await db
+    .select({ id: callAttempts.id })
+    .from(callAttempts)
+    .where(inArray(callAttempts.status, [...ACTIVE_CALL_ATTEMPT_STATUSES]));
+  const liveIds = liveAttempts.map((attempt) => attempt.id);
+
+  if (liveIds.length === 0) {
+    await db.delete(callTranscriptLines);
+    return;
+  }
+
+  await db
+    .delete(callTranscriptLines)
+    .where(notInArray(callTranscriptLines.attemptId, liveIds));
+  // A call wedged in a live state still loses its transcript at the ceiling.
+  await db
+    .delete(callTranscriptLines)
+    .where(
+      lt(
+        callTranscriptLines.createdAt,
+        new Date(now.getTime() - maximumAgeMinutes * 60_000),
+      ),
+    );
+}
+
+/**
+ * Attempts the provider still holds, newest first, with the job fields the
+ * operator console needs to name the call.
+ */
+export async function listActiveCallAttempts(db: AppDatabase, limit = 20) {
+  return db
+    .select({
+      attemptId: callAttempts.id,
+      jobId: callAttempts.jobId,
+      workspaceId: callAttempts.workspaceId,
+      attemptNumber: callAttempts.attemptNumber,
+      attemptStatus: callAttempts.status,
+      scheduledAt: callAttempts.scheduledAt,
+      startedAt: callAttempts.startedAt,
+      jobStatus: callJobs.status,
+      maxAttempts: callJobs.maxAttempts,
+      attemptCount: callJobs.attemptCount,
+      recipientDataCiphertext: callJobs.recipientDataCiphertext,
+      recipientPhoneLast4: callJobs.recipientPhoneLast4,
+    })
+    .from(callAttempts)
+    .innerJoin(callJobs, eq(callJobs.id, callAttempts.jobId))
+    .where(inArray(callAttempts.status, [...ACTIVE_CALL_ATTEMPT_STATUSES]))
+    .orderBy(desc(callAttempts.scheduledAt))
+    .limit(limit);
+}
+
+/** Attempts waiting on the cron or the queue, oldest scheduled first. */
+export async function listPendingCallAttempts(db: AppDatabase, limit = 50) {
+  return db
+    .select({
+      attemptId: callAttempts.id,
+      jobId: callAttempts.jobId,
+      attemptNumber: callAttempts.attemptNumber,
+      scheduledAt: callAttempts.scheduledAt,
+      recipientDataCiphertext: callJobs.recipientDataCiphertext,
+      recipientPhoneLast4: callJobs.recipientPhoneLast4,
+      maxAttempts: callJobs.maxAttempts,
+    })
+    .from(callAttempts)
+    .innerJoin(callJobs, eq(callJobs.id, callAttempts.jobId))
+    .where(eq(callAttempts.status, "scheduled"))
+    .orderBy(asc(callAttempts.scheduledAt))
+    .limit(limit);
 }
 
 export async function listCallLogs(db: AppDatabase, limit = 100) {

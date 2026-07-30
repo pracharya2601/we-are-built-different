@@ -174,8 +174,9 @@ export function CallConsole({ calls }: { calls: CallLog[] }) {
             <li>The queue Worker starts Vapi and records callbacks.</li>
           </ol>
           <p>
-            Transcripts and recordings are intentionally not copied into the
-            platform log.
+            The live transcript exists only while the call is connected and is
+            deleted when it ends. Recordings and transcripts are never copied
+            into the call log.
           </p>
         </aside>
       </section>

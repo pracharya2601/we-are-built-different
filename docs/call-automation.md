@@ -49,9 +49,37 @@ message cannot place a second call.
   `CALL_DATA_ENCRYPTION_KEY`.
 - Queue messages contain only `jobId`, `attemptId`, and schema version.
 - The webhook inbox stores only call ID, event type, status, ended reason, and
-  timestamp. Transcripts and recordings are not retained.
+  timestamp. Recordings are never retained, and no transcript text reaches the
+  inbox.
 - Call creation requires a same-origin request, documented-consent checkbox,
   an E.164 phone number, bounded context, and an IANA time zone.
+
+## Live operator view
+
+`/dashboard/admin/calls` shows the call automation queue and, while a call is
+connected, the transcript as it is spoken. The console polls
+`GET /api/v1/admin/calls/live` every two seconds during a call and every eight
+seconds otherwise; a backgrounded tab drops to the idle interval.
+
+The transcript is deliberately disposable:
+
+- Vapi `transcript` callbacks are accepted alongside `status-update` and
+  `end-of-call-report`. Only `transcriptType: "final"` lines are stored, so a
+  partial that rewrites itself several times per second never reaches D1.
+- Lines land in `call_transcript_lines`, encrypted with
+  `CALL_DATA_ENCRYPTION_KEY` and capped at 2,000 characters each.
+- They bypass the provider inbox. An inbox row is permanent, and a transcript
+  is not; a unique `(attempt_id, fingerprint)` index provides idempotency for
+  replayed deliveries instead.
+- `finishCallAttempt` deletes an attempt's lines as it records the outcome, and
+  a line arriving after the attempt leaves a live state is dropped rather than
+  stored. The minute cron sweeps anything a lost end-of-call callback left
+  behind, and any line older than sixty minutes regardless of attempt state.
+
+What survives a call is what survived before this view existed: the structured
+outcome, the summary, and the selected availability. Reading the live view
+requires platform-operator authorization, matching the `outreach.transcript`
+field already reserved to operators in `lib/openchair/projections`.
 
 ## Outcome and retry policy
 
@@ -74,6 +102,11 @@ The preferred Vapi end-of-call structured result contains:
 four hours, up to the configured job maximum. An ambiguous dispatch failure is
 sent to owner review rather than risking a duplicate call.
 
+The retry schedule applies only while a job's attempt budget allows it, and
+each caller sets its own. OpenChair outreach creates jobs with
+`maxAttempts: 1`, so a `no_answer` there advances to the next candidate instead
+of retrying — see [OpenChair Vapi MVP bridge](openchair/vapi-mvp.md).
+
 ## Local configuration
 
 Copy the Vapi and encryption entries from `.env.example` into `.env.local`:
@@ -83,6 +116,8 @@ Copy the Vapi and encryption entries from `.env.example` into `.env.local`:
 - `VAPI_PHONE_NUMBER_ID`: the Vapi outbound phone number.
 - `VAPI_WEBHOOK_TOKEN`: random token of at least 24 characters.
 - `CALL_DATA_ENCRYPTION_KEY`: random secret of at least 32 characters.
+- `VAPI_API_BASE_URL`: Vapi API origin; defaults to `https://api.vapi.ai` and
+  is overridden only to point at a stub during local testing.
 
 Configure the Vapi server URL as:
 

@@ -1,18 +1,27 @@
 import type { AppDatabase } from "../../db";
-import { constantTimeEqual, encodeBase64Url, sha256 } from "../auth/crypto";
+import { constantTimeEqual, encodeBase64Url, sha256 } from "../auth/crypto.ts";
 import {
   claimProviderEvent,
   completeProviderEvent,
   failProviderEvent,
-} from "../events/inbox";
-import { protectCallResult } from "./protection";
-import { parseCallOutcome } from "./outcome";
+} from "../events/inbox.ts";
+import { protectCallResult, protectCallTranscriptText } from "./protection.ts";
+import { parseCallOutcome } from "./outcome.ts";
 import {
+  appendCallTranscriptLine,
   findCallAttemptForWebhook,
   finishCallAttempt,
   updateCallProgress,
-} from "./store";
-import type { CallOutcome, CallResultData } from "./types";
+} from "./store.ts";
+import {
+  ACTIVE_CALL_ATTEMPT_STATUSES,
+  type CallOutcome,
+  type CallResultData,
+  type CallTranscriptSpeaker,
+} from "./types.ts";
+
+/** Longest utterance stored per line; anything beyond is provider noise. */
+const MAXIMUM_TRANSCRIPT_LINE_LENGTH = 2_000;
 
 export class VapiWebhookError extends Error {
   readonly code: string;
@@ -54,6 +63,19 @@ export async function handleVapiWebhook(
       "Vapi webhook call ID is required.",
       400,
     );
+  }
+
+  // Transcript lines bypass the provider inbox on purpose. They arrive many
+  // times per call, and an inbox row would keep a permanent record of an
+  // event the product deletes when the call ends. Their own unique index
+  // gives them idempotency instead.
+  if (message.type === "transcript") {
+    return recordTranscriptLine(db, {
+      message,
+      call,
+      callId,
+      encryptionKey: input.encryptionKey,
+    });
   }
 
   const providerEventId = await createProviderEventId(callId, message);
@@ -123,6 +145,78 @@ export async function handleVapiWebhook(
   }
 }
 
+/**
+ * Stores one finalized utterance so the operator console can render the call
+ * as it happens. Partial transcripts are ignored: they rewrite themselves
+ * several times per second and would turn a live view into a write storm.
+ */
+async function recordTranscriptLine(
+  db: AppDatabase,
+  input: {
+    message: Record<string, unknown>;
+    call: Record<string, unknown>;
+    callId: string;
+    encryptionKey: string;
+  },
+): Promise<{ accepted: true; duplicate: boolean }> {
+  const { message } = input;
+  if (readString(message, "transcriptType") !== "final") {
+    return { accepted: true, duplicate: true };
+  }
+
+  const speaker = transcriptSpeaker(readString(message, "role"));
+  const text = readString(message, "transcript")?.slice(
+    0,
+    MAXIMUM_TRANSCRIPT_LINE_LENGTH,
+  );
+  if (!speaker || !text) return { accepted: true, duplicate: true };
+
+  const metadata = readRecord(input.call, "metadata");
+  const attempt = await findCallAttemptForWebhook(db, {
+    providerCallId: input.callId,
+    attemptId: readString(metadata, "callAttemptId") ?? undefined,
+  });
+  if (!attempt) {
+    throw new VapiWebhookError(
+      "unknown_call",
+      "No local attempt matches this Vapi call.",
+      404,
+    );
+  }
+  // A line that lands after the end-of-call report would outlive the purge.
+  if (!isLiveAttemptStatus(attempt.status)) {
+    return { accepted: true, duplicate: true };
+  }
+
+  const timestamp = readString(message, "timestamp");
+  const fingerprint = encodeBase64Url(
+    (await sha256([speaker, text, timestamp ?? ""].join("\0"))).slice(0, 16),
+  );
+  await appendCallTranscriptLine(db, {
+    attemptId: attempt.id,
+    jobId: attempt.jobId,
+    workspaceId: attempt.workspaceId,
+    speaker,
+    textCiphertext: await protectCallTranscriptText(
+      text,
+      input.encryptionKey,
+    ),
+    fingerprint,
+    spokenAt: parseDate(timestamp) ?? new Date(),
+  });
+  return { accepted: true, duplicate: false };
+}
+
+function transcriptSpeaker(role: string | null): CallTranscriptSpeaker | null {
+  if (role === "assistant" || role === "bot") return "agent";
+  if (role === "user" || role === "customer") return "recipient";
+  return null;
+}
+
+function isLiveAttemptStatus(status: string): boolean {
+  return (ACTIVE_CALL_ATTEMPT_STATUSES as readonly string[]).includes(status);
+}
+
 function authenticateWebhook(
   authorization: string | null,
   expectedToken: string,
@@ -149,10 +243,13 @@ function parseMessage(body: unknown): Record<string, unknown> {
     );
   }
   const type = readString(body.message, "type");
-  if (!type || !["status-update", "end-of-call-report"].includes(type)) {
+  if (
+    !type ||
+    !["status-update", "transcript", "end-of-call-report"].includes(type)
+  ) {
     throw new VapiWebhookError(
       "unsupported_event",
-      "Only Vapi call status and end-of-call events are accepted.",
+      "Only Vapi call status, transcript, and end-of-call events are accepted.",
       400,
     );
   }

@@ -41,6 +41,9 @@ Status: MVP Checkout handlers and verified provider-event projection are live.
 Tables are `openchair_funding_requests`, `openchair_payments`,
 `openchair_payment_attempts`, and `openchair_funding_ledger_entries`.
 
+The sponsor half of this flow, including its authorization gap, is traced in
+[Sponsor funding](sponsor-funding.md).
+
 ## MVP HTTP flow
 
 1. `POST /api/v1/openchair/appointments/:id/funding/approve`

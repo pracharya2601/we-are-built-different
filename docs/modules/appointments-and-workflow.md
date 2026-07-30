@@ -3,9 +3,14 @@
 ## Status
 
 The provider-neutral contracts, D1 schema, pure workflow state machine,
-fixtures, and tests exist. Live appointment repositories, command handlers,
-history/outbox persistence, and mutation routes are the next implementation
-work.
+fixtures, and tests exist. Persistence is now live: `d1-repository.ts` creates
+an appointment together with its `OPEN_SLOT` workflow, `commit-plan.ts` turns a
+fact into the rows it implies, `repository.ts` commits state, history, and one
+outbox event per effect in a single batch, and `commands.ts` runs publish,
+cancel, expire, and complete exactly once through
+`openchair_command_receipts`.
+
+Mutation routes under `app/api/v1/openchair` are the next implementation work.
 
 ## Owns
 
@@ -67,7 +72,7 @@ The browser never posts an official workflow stage.
 Verify:
 
 ```bash
-node --test tests/openchair-workflow.test.mjs
+node --test tests/openchair-workflow.test.mjs tests/openchair-persistence.test.mjs
 npm run typecheck
 npm run build
 ```

@@ -1,8 +1,8 @@
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
 
 import type { AppDatabase } from "../../db";
-import { outboxEvents } from "../../db/schema";
-import { createId } from "../data/ids";
+import { outboxEvents } from "../../db/schema.ts";
+import { createId } from "../data/ids.ts";
 
 export async function enqueueOutboxEvent(
   db: AppDatabase,

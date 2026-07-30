@@ -14,7 +14,8 @@ Status: implemented and fail-closed until local Vapi configuration is present.
 - provider call ID correlation;
 - authenticated, idempotent Vapi callbacks;
 - structured generic outcomes and retry timing;
-- owner-only call logs without transcripts or recordings.
+- owner-only call logs without transcripts or recordings;
+- an operator-only live transcript that exists only while a call is connected.
 
 The Worker queue consumer lives in `worker/index.ts`. The API and console live
 under `app/api/v1/admin/calls` and `app/dashboard/admin/calls`.
@@ -73,7 +74,9 @@ must be canceled or skipped.
 - Ambiguous dispatch failures require review rather than risking duplicate
   contact.
 - Consent withdrawal and do-not-call are terminal for new outreach.
-- Raw transcripts and recordings are not copied into OpenChair tables.
+- Raw transcripts and recordings are not copied into OpenChair tables. The
+  live transcript stays in `call_transcript_lines` and is deleted when the call
+  ends; see `docs/call-automation.md`.
 - Provider callbacks are authenticated before event claim or mutation.
 
 ## Next implementation slice

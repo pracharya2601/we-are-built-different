@@ -5,6 +5,12 @@ on one part of OpenChair. The product currently uses a modular monolith: the
 modules share one vinext Cloudflare Worker and one D1 database, but their
 contracts and provider ports are kept separate so they can be extracted later.
 
+Two names appear throughout: **OpenChair** is the product, and **Built
+Different** is the platform it runs on — the repository, the Worker
+(`built-different-control-plane`), the D1 databases, and the session cookie all
+carry the platform name. Docs that say "the application" or "the control plane"
+mean the platform layer.
+
 ## Start here
 
 Follow [first local checkout](../../CONTRIBUTING.md#first-local-checkout) to
@@ -32,9 +38,10 @@ authorizes an operation. See [product roles](product-roles.md).
 | Module | Primary code | Current status | Guide |
 | --- | --- | --- | --- |
 | Identity and workspaces | `lib/auth`, `lib/data`, workspace APIs | Live | [Identity and workspaces](identity-and-workspaces.md) |
-| Appointments and workflow | `lib/openchair/appointments`, `workflow`, `contracts` | Contracts, schema, state machine; persistence handlers next | [Appointments and workflow](appointments-and-workflow.md) |
+| Appointments and workflow | `lib/openchair/appointments`, `workflow`, `contracts` | Contracts, schema, state machine, D1 persistence, and idempotent commands live; mutation routes next | [Appointments and workflow](appointments-and-workflow.md) |
 | Beneficiaries and candidates | `lib/openchair/beneficiaries` | Contracts, eligibility, schema; CRUD/selection next | [Beneficiaries and candidates](beneficiaries-and-candidates.md) |
 | Funding and payments | `lib/openchair/funding`, `lib/finance`, `lib/billing` | SaaS billing, generic ledger, and appointment funding (approve, Checkout, refund, verified webhook) live | [Funding and payments](funding-and-payments.md) |
+| Sponsor funding | `lib/openchair/funding` sponsor path, `contracts/permissions`, `authorization` | Approve, Checkout, verified payment, refund, and D1 sponsor authorization live; sponsorship management endpoints and sponsor UI next | [Sponsor funding](sponsor-funding.md) |
 | Outreach and voice calls | `lib/openchair/outreach`, `lib/calls` | Generic queued Vapi calls and the OpenChair sequencing adapter live; D1-backed run/attempt store and routes next | [Outreach and calls](outreach-and-calls.md) |
 | Projections and UI | `lib/openchair/projections`, fixtures, appointment page | Fixture-backed preview live; D1 projection and command UI next | [Projections and UI](projections-and-ui.md) |
 | Platform and infrastructure | `worker`, `lib/events`, uploads, Wrangler, migrations | Local bindings and worker flows live; remote resources environment-specific | [Platform and infrastructure](platform-and-infrastructure.md) |

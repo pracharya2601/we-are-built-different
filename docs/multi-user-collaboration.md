@@ -47,6 +47,11 @@ application-controlled action.
 | Billing administrator | View | No | Manage | Use |
 | Member | View | No | No | Use |
 
+The table shows intent, not two different permission sets: `owner` and `admin`
+resolve to identical permissions in `ROLE_PERMISSIONS`. The difference is the
+separate owner-protection rule in `canManageRole`, which is what stops an
+administrator from managing an owner.
+
 The role-to-permission policy lives in `lib/auth/authorization.ts`. New
 service-provider and nonprofit workspaces start with an `admin`, then support
 `admin`, `billing_admin`, and `member` as nested roles. The `owner` role remains

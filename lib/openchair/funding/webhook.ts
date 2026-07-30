@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import type { AppDatabase } from "../../../db";
 import {
@@ -6,8 +6,6 @@ import {
   openchairFundingRequests,
   openchairPaymentAttempts,
   openchairPayments,
-  openchairWorkflowHistory,
-  openchairWorkflows,
   outboxEvents,
 } from "../../../db/schema";
 import { verifyStripeWebhookSignature } from "../../billing/stripe-signature";
@@ -17,8 +15,12 @@ import {
   completeProviderEvent,
   failProviderEvent,
 } from "../../events/inbox";
-import { applyWorkflowFact } from "../workflow/state-machine";
-import type { WorkflowFact, WorkflowState } from "../workflow/types";
+import { planWorkflowCommit } from "../workflow/commit-plan.ts";
+import {
+  buildWorkflowCommitOperations,
+  loadWorkflowState,
+} from "../workflow/repository.ts";
+import type { WorkflowFact } from "../workflow/types";
 import type { AppointmentFundingConfig } from "./config";
 import { FundingError } from "./errors";
 
@@ -366,88 +368,41 @@ async function workflowOperations(
     allowInvalid?: boolean;
   },
 ) {
-  const workflow = (
-    await db
-      .select()
-      .from(openchairWorkflows)
-      .where(
-        and(
-          eq(openchairWorkflows.appointmentId, input.payment.appointmentId),
-          eq(openchairWorkflows.workspaceId, input.payment.workspaceId),
-        ),
-      )
-      .limit(1)
-  )[0];
-  if (!workflow) {
+  const state = await loadWorkflowState(
+    db,
+    input.payment.workspaceId,
+    input.payment.appointmentId,
+  );
+  if (!state) {
     throw new FundingError(
       "workflow_not_found",
       "Appointment workflow was not found.",
       422,
     );
   }
-  let transition;
+  let plan;
   try {
-    transition = applyWorkflowFact(toWorkflowState(workflow), {
-      eventId: input.eventId,
-      correlationId: input.correlationId,
-      occurredAt: input.occurredAt.toISOString(),
-      fact: input.fact,
+    plan = planWorkflowCommit({
+      state,
+      envelope: {
+        eventId: input.eventId,
+        correlationId: input.correlationId,
+        occurredAt: input.occurredAt.toISOString(),
+        fact: input.fact,
+      },
+      actor: { type: "service", id: "stripe" },
+      newId: createId,
     });
   } catch (error) {
     if (input.allowInvalid) return [];
     throw error;
   }
-  if (!transition.changed) return [];
-  return [
-    db
-      .update(openchairWorkflows)
-      .set({
-        stage: transition.state.stage,
-        version: transition.state.version,
-        sponsorPaid: transition.state.sponsorPaid,
-        patientPaid: transition.state.patientPaid,
-        reservedCandidateId: transition.state.reservedCandidateId,
-        terminalReason: transition.state.terminalReason,
-        updatedAt: input.occurredAt,
-      })
-      .where(
-        and(
-          eq(openchairWorkflows.appointmentId, input.payment.appointmentId),
-          eq(openchairWorkflows.version, workflow.version),
-        ),
-      ),
-    db.insert(openchairWorkflowHistory).values({
-      id: createId("hist"),
-      workspaceId: input.payment.workspaceId,
-      appointmentId: input.payment.appointmentId,
-      workflowVersion: transition.state.version,
-      fromStage: transition.previousState.stage,
-      toStage: transition.state.stage,
-      eventId: input.eventId,
-      eventType: input.fact.type,
-      correlationId: input.correlationId,
-      actorType: "service",
-      actorId: "stripe",
-      occurredAt: input.occurredAt,
-      createdAt: input.occurredAt,
-    }),
-  ];
-}
-
-function toWorkflowState(
-  value: typeof openchairWorkflows.$inferSelect,
-): WorkflowState {
-  return {
-    appointmentId: value.appointmentId,
-    workspaceId: value.workspaceId,
-    stage: value.stage,
-    version: value.version,
-    sponsorPaid: value.sponsorPaid,
-    patientPaid: value.patientPaid,
-    reservedCandidateId: value.reservedCandidateId,
-    terminalReason: value.terminalReason,
-    updatedAt: value.updatedAt.toISOString(),
-  };
+  if (!plan.changed) return [];
+  return buildWorkflowCommitOperations(db, {
+    workspaceId: input.payment.workspaceId,
+    appointmentId: input.payment.appointmentId,
+    plan,
+  });
 }
 
 function readFundingMetadata(object: Record<string, unknown>) {

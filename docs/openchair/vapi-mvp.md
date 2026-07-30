@@ -31,20 +31,15 @@ directly.
 
 ## Hackathon configuration
 
-The live composition needs:
+The live composition needs the shared Vapi environment and webhook setup from
+[call automation](../call-automation.md#local-configuration), plus three
+OpenChair-only requirements:
 
-- `VAPI_API_KEY`
-- `VAPI_ASSISTANT_ID`
-- `VAPI_PHONE_NUMBER_ID`
-- `VAPI_WEBHOOK_TOKEN`
-- `CALL_DATA_ENCRYPTION_KEY`
-- a public Vapi callback pointing to `/api/webhooks/vapi`
 - a real internal user ID for the required `call_jobs.created_by_user_id`
 - a candidate resolver that returns the decrypted E.164 phone number and the
   approved appointment context
-
-The Vapi assistant should return structured `outcome` values supported by the
-generic parser, at minimum `confirmed`, `declined`, and `no_answer`.
+- a Vapi assistant returning structured `outcome` values supported by the
+  generic parser, at minimum `confirmed`, `declined`, and `no_answer`
 
 ## Deliberately deferred
 

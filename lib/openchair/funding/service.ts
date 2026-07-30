@@ -7,12 +7,11 @@ import {
   openchairFundingRequests,
   openchairPaymentAttempts,
   openchairPayments,
-  openchairWorkflowHistory,
   openchairWorkflows,
   outboxEvents,
 } from "../../../db/schema";
 import { createId } from "../../data/ids";
-import { applyWorkflowFact } from "../workflow/state-machine";
+import { commitWorkflowFact } from "../workflow/repository.ts";
 import { FundingError } from "./errors";
 import type { AppointmentPaymentProvider } from "./payment-provider";
 
@@ -240,28 +239,6 @@ export async function createAppointmentCheckout(
   const attemptId = createId("payatt");
   const checkoutEventId = createId("evt");
   const correlationId = createId("cor");
-  const patientTransition =
-    input.payerType === "patient"
-      ? applyWorkflowFact(
-          {
-            appointmentId: workflow.appointmentId,
-            workspaceId: workflow.workspaceId,
-            stage: workflow.stage,
-            version: workflow.version,
-            sponsorPaid: workflow.sponsorPaid,
-            patientPaid: workflow.patientPaid,
-            reservedCandidateId: workflow.reservedCandidateId,
-            terminalReason: workflow.terminalReason,
-            updatedAt: workflow.updatedAt.toISOString(),
-          },
-          {
-            eventId: checkoutEventId,
-            correlationId,
-            occurredAt: now.toISOString(),
-            fact: { type: "funding.patient_checkout_created" },
-          },
-        )
-      : null;
   const operations: BatchItem<"sqlite">[] = [
     db
       .insert(openchairPaymentAttempts)
@@ -296,38 +273,12 @@ export async function createAppointmentCheckout(
       })
       .where(eq(openchairPayments.id, payment.id)),
   ];
-  if (patientTransition?.changed) {
+  if (input.payerType === "patient") {
+    // The funding module owns this domain event; the workflow module emits the
+    // stage change it causes. Both land in the same batch as the payment rows.
     operations.push(
-      db
-        .update(openchairWorkflows)
-        .set({
-          stage: patientTransition.state.stage,
-          version: patientTransition.state.version,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(openchairWorkflows.appointmentId, payment.appointmentId),
-            eq(openchairWorkflows.version, workflow.version),
-          ),
-        ),
-      db.insert(openchairWorkflowHistory).values({
-        id: createId("hist"),
-        workspaceId: payment.workspaceId,
-        appointmentId: payment.appointmentId,
-        workflowVersion: patientTransition.state.version,
-        fromStage: patientTransition.previousState.stage,
-        toStage: patientTransition.state.stage,
-        eventId: checkoutEventId,
-        eventType: "funding.patient_checkout_created",
-        correlationId,
-        actorType: "service",
-        actorId: "stripe_checkout",
-        occurredAt: now,
-        createdAt: now,
-      }),
       db.insert(outboxEvents).values({
-        id: checkoutEventId,
+        id: createId("evt"),
         aggregateType: "appointment",
         aggregateId: payment.appointmentId,
         eventType: "funding.patient_checkout_created",
@@ -344,13 +295,26 @@ export async function createAppointmentCheckout(
         updatedAt: now,
       }),
     );
+    await commitWorkflowFact(db, {
+      workspaceId: payment.workspaceId,
+      appointmentId: payment.appointmentId,
+      actor: { type: "service", id: "stripe_checkout" },
+      envelope: {
+        eventId: checkoutEventId,
+        correlationId,
+        occurredAt: now.toISOString(),
+        fact: { type: "funding.patient_checkout_created" },
+      },
+      extraOperations: operations,
+    });
+  } else {
+    await db.batch(
+      operations as [
+        BatchItem<"sqlite">,
+        ...BatchItem<"sqlite">[],
+      ],
+    );
   }
-  await db.batch(
-    operations as [
-      BatchItem<"sqlite">,
-      ...BatchItem<"sqlite">[],
-    ],
-  );
   return {
     paymentId: payment.id,
     payerType: payment.payerType,

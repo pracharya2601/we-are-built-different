@@ -1,9 +1,11 @@
+import { getDb } from "@/db";
 import { withApiAuth } from "@/lib/auth";
 import {
   createAppointmentCheckout,
   FundingError,
   fundingErrorResponse,
 } from "@/lib/openchair/funding";
+import { requireAppointmentSponsor } from "@/lib/openchair/sponsors";
 import { getAppointmentFundingRuntime } from "@/lib/runtime/appointment-funding";
 
 type RouteContext = {
@@ -21,6 +23,7 @@ export const POST = withApiAuth(
           404,
         );
       }
+      await requireAppointmentSponsor(getDb(), auth, appointmentId);
       const runtime = getAppointmentFundingRuntime();
       const origin = new URL(request.url).origin;
       const suppliedKey = request.headers.get("idempotency-key")?.trim();
@@ -48,5 +51,5 @@ export const POST = withApiAuth(
       return fundingErrorResponse(error);
     }
   },
-  "funds:manage",
+  "product:use",
 );

@@ -21,7 +21,8 @@ durable access projection.
 - Multiple users collaborate through separate memberships in the same team
   workspace; projects and product accounts inherit that workspace boundary.
 - Local workspace roles are the authorization source of truth. Auth0 roles
-  cannot bypass local tenant membership.
+  cannot bypass local tenant membership. The full trust model lives in
+  [multi-user collaboration](multi-user-collaboration.md).
 - Stripe owns optional payment state. One Stripe Customer belongs to one workspace.
 - Effective access is the local `platform_access` entitlement projection.
 - The future product consumes internal IDs and entitlement APIs/events, never provider IDs.
@@ -29,26 +30,17 @@ durable access projection.
 
 ## Shared Interfaces
 
-```ts
-type AuthContext = {
-  userId: string;
-  workspaceId: string;
-  subject: string;
-  email: string | null;
-  roles: Array<"owner" | "admin" | "billing_admin" | "member">;
-};
+These contracts have since grown; do not copy them from this historical record.
+`AuthContext` now also carries `accountType`, `permissions`, `tokenRoles`,
+`tokenPermissions`, and `signInIntent` — read the live definitions instead:
 
-type AccessState =
-  | "active"
-  | "trialing"
-  | "grace"
-  | "inactive";
-```
-
-Protected server routes call `requireAuthContext()`. Billing mutations
-additionally call `requireWorkspacePermission("billing:manage")`. Product
-access is decided by `getWorkspaceAccess(workspaceId)`. The core product reads
-the active principal from `GET /api/v1/me`.
+- `lib/auth/types.ts` — `AuthContext`, `WorkspaceRole`, `WorkspacePermission`.
+- `lib/data/access.ts` — `AccessState`.
+- [External backend authorization](external-backend-authorization-llm-context.md)
+  — the `/api/v1/me` and entitlement payloads.
+- [Identity and workspaces](modules/identity-and-workspaces.md) — the
+  `requireAuthContext()` / `requireWorkspacePermission()` / `getWorkspaceAccess()`
+  guard rules.
 
 ## Workstreams
 

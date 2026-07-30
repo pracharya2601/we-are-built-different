@@ -1,8 +1,8 @@
 import { and, eq, lt } from "drizzle-orm";
 
 import type { AppDatabase } from "../../db";
-import { providerInboxEvents } from "../../db/schema";
-import { createId } from "../data/ids";
+import { providerInboxEvents } from "../../db/schema.ts";
+import { createId } from "../data/ids.ts";
 
 export type InboxClaim =
   | { claimed: true; id: string; attempts: number }

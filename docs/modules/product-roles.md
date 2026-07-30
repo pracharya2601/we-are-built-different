@@ -47,6 +47,9 @@ Primary modules:
 A fixture URL such as `?role=sponsor` changes preview presentation only. It
 must never grant a live sponsor permission.
 
+The sponsor path end to end is documented in
+[Sponsor funding](sponsor-funding.md).
+
 ## Beneficiary or patient
 
 A beneficiary account uses a private personal workspace in the current control

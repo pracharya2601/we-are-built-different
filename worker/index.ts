@@ -11,6 +11,7 @@ import {
 import {
   dispatchDueCallAttempts,
   processCallQueueMessage,
+  purgeStaleCallTranscripts,
   type CallQueueMessage,
 } from "../lib/calls";
 
@@ -74,6 +75,9 @@ const worker = {
     const db = drizzle(env.DB, { schema });
     const tasks: Promise<unknown>[] = [
       dispatchDueCallAttempts(db, env.CALL_AUTOMATION_QUEUE),
+      // Live transcripts belong to calls in progress; a lost end-of-call
+      // callback must not leave one behind.
+      purgeStaleCallTranscripts(db),
     ];
     const config = getFileMetadataDeliveryConfig(env);
     if (config) tasks.push(deliverImageMetadataEvents(db, config));

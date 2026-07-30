@@ -32,7 +32,8 @@
           "http://localhost:3000/api/auth/callback"
         ],
         "allowed_logout_urls": [
-          "http://localhost:3000"
+          "http://localhost:3000",
+          "http://localhost:3000/"
         ],
         "web_origins": [
           "http://localhost:3000"
@@ -46,7 +47,7 @@
         "cross_origin_authentication": false
       },
       "createdAt": "2026-07-30T20:22:03.707Z",
-      "lastRevealedAt": "2026-07-30T20:28:22.321Z",
+      "lastRevealedAt": "2026-07-30T21:51:27.117Z",
       "lastStatus": "complete",
       "name": "auth0-client",
       "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",

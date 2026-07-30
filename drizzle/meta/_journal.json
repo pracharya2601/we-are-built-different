@@ -71,6 +71,20 @@
       "when": 1785437949170,
       "tag": "0009_medical_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1785449264367,
+      "tag": "0010_daffy_johnny_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1785450773736,
+      "tag": "0011_tidy_jean_grey",
+      "breakpoints": true
     }
   ]
 }

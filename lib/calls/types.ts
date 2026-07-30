@@ -27,6 +27,26 @@ export type CallResultData = {
   selectedAvailability: string | null;
 };
 
+/** Attempt states where the provider still has the call in hand. */
+export const ACTIVE_CALL_ATTEMPT_STATUSES = [
+  "queued",
+  "dispatching",
+  "provider_queued",
+  "ringing",
+  "in_progress",
+] as const;
+
+export type ActiveCallAttemptStatus =
+  (typeof ACTIVE_CALL_ATTEMPT_STATUSES)[number];
+
+export type CallTranscriptSpeaker = "agent" | "recipient";
+
+export type CallTranscriptLine = {
+  speaker: CallTranscriptSpeaker;
+  text: string;
+  spokenAt: Date;
+};
+
 export type CallQueueMessage = {
   version: 1;
   jobId: string;

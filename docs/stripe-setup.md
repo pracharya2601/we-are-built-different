@@ -118,9 +118,11 @@ products are mapped through the server-side allowlist:
 Send an `Idempotency-Key` header containing 8–128 safe characters. The example
 creates a $50/month Pro Checkout Session. The route rejects unknown products,
 non-integer amounts, non-USD currencies, and values outside 50 cents to
-$100,000. The future core product should call this route from its backend using
-Auth0 machine-to-machine authorization; the current scaffold requires an
-authenticated billing manager session.
+$100,000. It also rejects any workspace whose account type is not `nonprofit`
+(`lib/billing/handlers.ts`), so custom contribution amounts are unavailable to
+service-provider and beneficiary workspaces. The future core product should
+call this route from its backend using Auth0 machine-to-machine authorization;
+the current scaffold requires an authenticated billing manager session.
 
 Stripe creates inline prices from `price_data`; they cannot be reused or
 updated. The stable internal `pricingKey` is stored with the subscription and
