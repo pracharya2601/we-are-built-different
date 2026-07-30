@@ -42,6 +42,11 @@ export type PaymentPresentation = {
 
 export type WorkflowPanelData = {
   selectedCandidateCount?: number;
+  candidateOptions?: Array<{
+    candidateId: CandidateId;
+    displayName: string;
+  }>;
+  fundingApproved?: boolean;
   currentCandidateName?: string;
   acceptedCandidateId?: CandidateId;
   acceptedPatientName?: string;

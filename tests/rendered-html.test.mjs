@@ -107,32 +107,26 @@ test("authentication and billing have no demo fallback", async () => {
   assert.doesNotMatch(sources.join("\n"), /createDemoSession|mode: "demo"/);
 });
 
-test("the demo-openchair preview route no longer exists", async () => {
-  const { access } = await import("node:fs/promises");
-  const gone = await access(new URL("../app/appointments/", import.meta.url))
-    .then(() => false)
-    .catch(() => true);
-  assert.equal(gone, true, "app/appointments/ must not exist");
-
-  // Nothing may link to the removed route.
-  const linked = await Promise.all(
-    ["../app/page.tsx", "../app/dashboard/layout.tsx"].map((path) =>
-      readFile(new URL(path, import.meta.url), "utf8"),
+test("the live workflow stays authenticated while fixture APIs remain isolated", async () => {
+  const [page, appointment, api] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../app/appointments/[appointmentId]/page.tsx", import.meta.url),
+      "utf8",
     ),
-  );
-  for (const source of linked) {
-    assert.doesNotMatch(source, /\/appointments\/demo-openchair/);
-  }
-});
-
-test("the fixture API that outlived the preview stays authenticated", async () => {
-  const api = await readFile(
-    new URL(
-      "../app/api/openchair/fixtures/[fixtureName]/route.ts",
-      import.meta.url,
+    readFile(
+      new URL(
+        "../app/api/openchair/fixtures/[fixtureName]/route.ts",
+        import.meta.url,
+      ),
+      "utf8",
     ),
-    "utf8",
-  );
+  ]);
+
+  assert.doesNotMatch(page, /\/appointments\/demo-openchair/);
+  assert.match(appointment, /loadLiveWorkflowProjection/);
+  assert.match(appointment, /<AuthGuard/);
+  assert.doesNotMatch(appointment, /searchParams|fixture|role/);
   assert.match(api, /withApiAuth/);
 });
 

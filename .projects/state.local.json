@@ -1,6 +1,7 @@
 {
   "version": 1,
   "project": {
+    "catalog": "prod",
     "initializedAt": "2026-07-30T20:16:07.701Z",
     "merchantDisplayName": "wearebuilddifferenaccount",
     "merchantId": "acct_1TymLcPnnBu8s2qd",
@@ -68,6 +69,23 @@
     }
   },
   "managedProjectVariableEnvKeys": {
+    ".env": [
+      "APP_ENV",
+      "BILLING_GRACE_PERIOD_SECONDS",
+      "CALL_DATA_ENCRYPTION_KEY",
+      "STRIPE_PRICE_PLATFORM_LITE",
+      "STRIPE_PRICE_PLATFORM_PRO",
+      "STRIPE_PRODUCT_PLATFORM_LITE",
+      "STRIPE_PRODUCT_PLATFORM_PRO",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+      "STRIPE_WEBHOOK_TOLERANCE_SECONDS",
+      "VAPI_API_BASE_URL",
+      "VAPI_API_KEY",
+      "VAPI_ASSISTANT_ID",
+      "VAPI_PHONE_NUMBER_ID",
+      "VAPI_WEBHOOK_TOKEN"
+    ],
     ".env.local": [
       "AUTH0_APP_BASE_URL",
       "AUTH0_SESSION_SECRET"

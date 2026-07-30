@@ -369,7 +369,22 @@ test("fixture catalog, D1 migration, UI, and architecture docs stay aligned", as
   assert.match(openChairMigration, /openchair_outreach_attempts/);
   assert.match(openChairMigration, /workspace_id/);
 
-  const [architecture, workflow, frontendAccess] = await Promise.all([
+  const [page, view, architecture, workflow, frontendAccess] =
+    await Promise.all([
+    readFile(
+      new URL(
+        "../app/appointments/[appointmentId]/page.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/appointments/[appointmentId]/workflow-view.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
     readFile(
       new URL("../docs/openchair/architecture.md", import.meta.url),
       "utf8",
@@ -383,6 +398,11 @@ test("fixture catalog, D1 migration, UI, and architecture docs stay aligned", as
       "utf8",
     ),
   ]);
+  assert.match(page, /<AuthGuard/);
+  assert.match(page, /loadLiveWorkflowProjection/);
+  assert.doesNotMatch(page, /searchParams|fixture|role/);
+  assert.match(view, /projection\.access\.actions/);
+  assert.doesNotMatch(view, /Synthetic fixture|role switcher/i);
   assert.match(architecture, /modular monolith/i);
   assert.match(architecture, /workspaceId/);
   assert.match(workflow, /funding\.patient_checkout_created/);
