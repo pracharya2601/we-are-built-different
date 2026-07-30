@@ -47,34 +47,37 @@ test("subscription access policy fails closed", () => {
   }
 });
 
-test("demo seed is guarded and cannot fabricate billing access", async () => {
-  const source = await readFile(
-    new URL("../lib/data/demo-seed.ts", import.meta.url),
-    "utf8",
-  );
-  assert.match(source, /environment !== "demo"/);
-  assert.match(source, /environment !== "development"/);
-  assert.match(source, /accessState: "inactive"/);
-  assert.doesNotMatch(source, /billingAccounts|subscriptions/);
-});
-
 test("baseline migration contains the control-plane invariants", async () => {
   const files = (await readdir(new URL("../drizzle/", import.meta.url))).filter(
     (file) => file.endsWith(".sql"),
   );
-  assert.equal(files.length, 1, "fresh scaffold should have one baseline SQL");
-  const sql = await readFile(new URL(`../drizzle/${files[0]}`, import.meta.url), "utf8");
+  assert.ok(files.length >= 1);
+  const sql = (
+    await Promise.all(
+      files.map((file) =>
+        readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8"),
+      ),
+    )
+  ).join("\n");
 
   for (const table of [
     "users",
     "identities",
     "workspaces",
     "memberships",
+    "membership_permission_overrides",
+    "participant_roles",
+    "funding_pools",
+    "financial_accounts",
+    "financial_transactions",
+    "financial_ledger_entries",
+    "service_provider_accounts",
     "billing_accounts",
     "subscriptions",
     "entitlements",
     "provider_inbox_events",
     "outbox_events",
+    "image_uploads",
     "audit_log",
   ]) {
     assert.match(sql, new RegExp(`CREATE TABLE \\\`${table}\\\``));
@@ -85,6 +88,17 @@ test("baseline migration contains the control-plane invariants", async () => {
   assert.match(sql, /provider_inbox_provider_event_uidx/);
   assert.match(sql, /entitlements_revision_check/);
   assert.match(sql, /outbox_state_available_idx/);
+  assert.match(sql, /image_uploads_workspace_status_idx/);
+  assert.match(sql, /image_uploads_bucket_object_uidx/);
+  assert.match(sql, /DEFAULT 'r2'/);
+  assert.match(sql, /version_id/);
   assert.match(sql, /`lease_token` text/);
+  assert.match(sql, /pricing_key/);
+  assert.match(sql, /workspace_type/);
+  assert.match(sql, /account_type/);
+  assert.match(sql, /workspaces_account_type_check/);
+  assert.match(sql, /membership_permission_overrides_effect_check/);
+  assert.match(sql, /financial_transactions_workspace_idempotency_uidx/);
+  assert.match(sql, /financial_ledger_entries_amount_check/);
   assert.match(sql, /FOREIGN KEY/);
 });

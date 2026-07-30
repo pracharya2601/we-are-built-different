@@ -1,6 +1,8 @@
 import { BillingError, errorResponse } from "./errors";
+import { resolveCheckoutPrice } from "./pricing-router";
 import { ingestStripeWebhook } from "./webhook";
 import type { BillingRuntime } from "./types";
+import { planAllowedForAccount } from "../accounts";
 
 export async function handleCreateCheckout(
   request: Request,
@@ -9,15 +11,33 @@ export async function handleCreateCheckout(
   try {
     assertSameOrigin(request);
     const auth = await runtime.auth.requireBillingManager(request);
-    assertLive(runtime);
     const isForm = isHtmlFormSubmission(request);
     const body = await readRequestObject(request);
-    const planKey = typeof body.planKey === "string" ? body.planKey : "";
-    const plan = runtime.config.plans.get(planKey);
-    if (!plan) {
+    const price = resolveCheckoutPrice(body, runtime.config);
+    if (
+      price.kind === "catalog" &&
+      !planAllowedForAccount(auth.accountType, price.key)
+    ) {
       throw new BillingError(
-        "Select a configured billing plan.",
-        "invalid_billing_plan",
+        "This billing plan is not available for the active account type.",
+        "billing_plan_not_allowed",
+        403,
+      );
+    }
+    if (price.kind === "dynamic" && auth.accountType !== "nonprofit") {
+      throw new BillingError(
+        "Custom contribution pricing is available only to nonprofit workspaces.",
+        "dynamic_pricing_not_allowed",
+        403,
+      );
+    }
+    if (
+      price.kind === "dynamic" &&
+      !validIdempotencyKey(request.headers.get("idempotency-key"))
+    ) {
+      throw new BillingError(
+        "Dynamic Checkout requires an Idempotency-Key header.",
+        "missing_idempotency_key",
         400,
       );
     }
@@ -35,24 +55,34 @@ export async function handleCreateCheckout(
     }
 
     const origin = trustedRequestOrigin(request);
+    const onboarding = auth.accountType === "service_provider";
     const checkout = await runtime.stripe.createCheckoutSession({
       workspaceId: auth.workspaceId,
       stripeCustomerId,
-      plan,
+      price,
       // This page only reports that checkout returned. Entitlement state is
       // updated exclusively from verified webhooks.
-      successUrl: `${origin}/dashboard/billing/return?checkout=returned`,
-      cancelUrl: `${origin}/dashboard/billing?checkout=canceled`,
+      successUrl: onboarding
+        ? `${origin}/onboarding/subscription/return?checkout=returned`
+        : `${origin}/dashboard/billing/return?checkout=returned`,
+      cancelUrl: onboarding
+        ? `${origin}/onboarding/subscription?checkout=canceled`
+        : `${origin}/dashboard/billing?checkout=canceled`,
       idempotencyKey: checkoutIdempotencyKey(
         request,
         auth.workspaceId,
-        plan.key,
+        price.key,
       ),
     });
     return isForm
       ? Response.redirect(checkout.url, 303)
       : Response.json(
-          { mode: "live", url: checkout.url, checkoutSessionId: checkout.id },
+          {
+            mode: "live",
+            url: checkout.url,
+            checkoutSessionId: checkout.id,
+            pricingKey: price.key,
+          },
           { status: 201 },
         );
   } catch (error) {
@@ -67,7 +97,6 @@ export async function handleCreatePortalSession(
   try {
     assertSameOrigin(request);
     const auth = await runtime.auth.requireBillingManager(request);
-    assertLive(runtime);
     const account = await runtime.store.getBillingAccount(auth.workspaceId);
     if (!account?.stripeCustomerId) {
       throw new BillingError(
@@ -79,7 +108,10 @@ export async function handleCreatePortalSession(
 
     const portal = await runtime.stripe.createPortalSession({
       stripeCustomerId: account.stripeCustomerId,
-      returnUrl: `${trustedRequestOrigin(request)}/dashboard/billing`,
+      returnUrl:
+        auth.accountType === "service_provider"
+          ? `${trustedRequestOrigin(request)}/onboarding/subscription`
+          : `${trustedRequestOrigin(request)}/dashboard/billing`,
     });
     return isHtmlFormSubmission(request)
       ? Response.redirect(portal.url, 303)
@@ -98,21 +130,6 @@ export async function handleStripeWebhook(
     return Response.json({ received: true, ...result });
   } catch (error) {
     return errorResponse(error);
-  }
-}
-
-function assertLive(
-  runtime: BillingRuntime,
-): asserts runtime is BillingRuntime & {
-  config: Extract<BillingRuntime["config"], { mode: "live" }>;
-  stripe: NonNullable<BillingRuntime["stripe"]>;
-} {
-  if (runtime.config.mode !== "live" || !runtime.stripe) {
-    throw new BillingError(
-      "Billing is in demo mode. Configure Stripe before starting a payment.",
-      "billing_demo_mode",
-      503,
-    );
   }
 }
 
@@ -181,10 +198,14 @@ function checkoutIdempotencyKey(
   planKey: string,
 ): string {
   const supplied = request.headers.get("idempotency-key")?.trim();
-  if (supplied && /^[A-Za-z0-9_:.+-]{8,128}$/.test(supplied)) {
+  if (validIdempotencyKey(supplied)) {
     return `checkout:${workspaceId}:${planKey}:${supplied}`;
   }
   // A fresh Checkout Session is appropriate for a fresh attempt. Callers that
   // retry the same action should send an Idempotency-Key.
   return `checkout:${workspaceId}:${planKey}:${crypto.randomUUID()}`;
+}
+
+function validIdempotencyKey(value: string | null | undefined): value is string {
+  return Boolean(value && /^[A-Za-z0-9_:.+-]{8,128}$/u.test(value.trim()));
 }

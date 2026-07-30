@@ -1,0 +1,17 @@
+{
+  "name": "chair-filled",
+  "description": "Both contributions are confirmed and the chair is filled.",
+  "activeStage": "CHAIR_FILLED",
+  "lastJourneyStage": "CHAIR_FILLED",
+  "workflowVersion": 7,
+  "selectedCandidateCount": 3,
+  "acceptedCandidateId": "cand_22222222222222222222222222222222",
+  "acceptedPatientName": "Ahmed",
+  "previousOutcomes": [
+    { "displayName": "Maria", "outcome": "No answer" },
+    { "displayName": "Ahmed", "outcome": "Accepted" },
+    { "displayName": "James", "outcome": "Not called" }
+  ],
+  "sponsorStatus": "paid",
+  "patientStatus": "paid"
+}

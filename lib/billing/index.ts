@@ -3,6 +3,7 @@ export * from "./auth-adapter";
 export * from "./config";
 export * from "./errors";
 export * from "./handlers";
+export * from "./pricing-router";
 export * from "./runtime";
 export * from "./stripe-client";
 export * from "./stripe-signature";

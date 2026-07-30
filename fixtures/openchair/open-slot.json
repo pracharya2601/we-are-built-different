@@ -1,0 +1,10 @@
+{
+  "name": "open-slot",
+  "description": "Clinic reviews a canceled appointment before publishing it.",
+  "activeStage": "OPEN_SLOT",
+  "lastJourneyStage": "OPEN_SLOT",
+  "workflowVersion": 1,
+  "selectedCandidateCount": 0,
+  "sponsorStatus": "waiting",
+  "patientStatus": "waiting"
+}

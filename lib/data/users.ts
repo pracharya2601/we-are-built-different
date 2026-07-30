@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import type { AppDatabase } from "../../db";
 import { identities, users } from "../../db/schema";
@@ -108,3 +108,26 @@ export async function resolveOrCreateUserIdentity(
   };
 }
 
+export async function findVerifiedUserByEmail(
+  db: AppDatabase,
+  email: string,
+) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const matches = await db
+    .selectDistinct({
+      userId: users.id,
+      displayName: users.displayName,
+      email: identities.email,
+    })
+    .from(identities)
+    .innerJoin(users, eq(users.id, identities.userId))
+    .where(
+      and(
+        eq(identities.emailVerified, true),
+        eq(users.status, "active"),
+        sql`lower(${identities.email}) = ${normalizedEmail}`,
+      ),
+    )
+    .limit(2);
+  return matches.length === 1 ? matches[0] : null;
+}

@@ -1,0 +1,14 @@
+{
+  "name": "calling-connected",
+  "description": "Ahmed is connected while James remains uncalled.",
+  "activeStage": "CALLING_PATIENTS",
+  "lastJourneyStage": "CALLING_PATIENTS",
+  "workflowVersion": 4,
+  "selectedCandidateCount": 3,
+  "currentCandidateName": "Ahmed",
+  "previousOutcomes": [
+    { "displayName": "Maria", "outcome": "No answer" }
+  ],
+  "sponsorStatus": "paid",
+  "patientStatus": "waiting"
+}

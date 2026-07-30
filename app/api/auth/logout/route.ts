@@ -15,16 +15,12 @@ function logout(request: Request): Response {
   const returnTo = safeReturnTo(url.searchParams.get("returnTo"));
   const localReturnUrl = new URL(returnTo, config.appBaseUrl).toString();
 
-  let destination = localReturnUrl;
-  if (config.mode === "auth0") {
-    const logoutUrl = new URL("v2/logout", config.issuer);
-    logoutUrl.searchParams.set("client_id", config.clientId);
-    logoutUrl.searchParams.set("returnTo", localReturnUrl);
-    destination = logoutUrl.toString();
-  }
+  const logoutUrl = new URL("v2/logout", config.issuer);
+  logoutUrl.searchParams.set("client_id", config.clientId);
+  logoutUrl.searchParams.set("returnTo", localReturnUrl);
 
   const headers = new Headers({
-    location: destination,
+    location: logoutUrl.toString(),
   });
   headers.append("set-cookie", clearCookie(SESSION_COOKIE));
   return new Response(null, { status: 302, headers });

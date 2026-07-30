@@ -1,0 +1,14 @@
+{
+  "name": "calling-no-answer",
+  "description": "Maria did not answer and Ahmed is next in sequence.",
+  "activeStage": "CALLING_PATIENTS",
+  "lastJourneyStage": "CALLING_PATIENTS",
+  "workflowVersion": 4,
+  "selectedCandidateCount": 3,
+  "currentCandidateName": "Ahmed",
+  "previousOutcomes": [
+    { "displayName": "Maria", "outcome": "No answer" }
+  ],
+  "sponsorStatus": "paid",
+  "patientStatus": "waiting"
+}

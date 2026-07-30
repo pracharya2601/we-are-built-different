@@ -1,0 +1,4 @@
+interface:
+  display_name: "Connect Scaffold Infrastructure"
+  short_description: "Wire application scaffolds to Cloudflare safely"
+  default_prompt: "Use $connect-scaffold-infra to audit this scaffold and prepare its Cloudflare infrastructure integration."

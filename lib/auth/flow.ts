@@ -14,6 +14,11 @@ import {
 } from "./oidc";
 import type { AuthSession, AuthTransaction } from "./types";
 import { AuthError } from "./types";
+import { permissionsForRoles } from "./authorization";
+import {
+  normalizeSignInIntent,
+  type SignInIntent,
+} from "./sign-in-intent";
 
 const TRANSACTION_LIFETIME_SECONDS = 10 * 60;
 const SESSION_LIFETIME_SECONDS = 8 * 60 * 60;
@@ -24,6 +29,7 @@ export async function beginAuth0Login(
     returnTo: string;
     organizationId?: string | null;
     invitation?: string | null;
+    signInIntent?: SignInIntent | null;
   },
 ): Promise<{ transaction: AuthTransaction; authorizationUrl: string }> {
   const now = Math.floor(Date.now() / 1000);
@@ -45,6 +51,7 @@ export async function beginAuth0Login(
     codeVerifier,
     returnTo: safeReturnTo(input.returnTo),
     organizationId,
+    signInIntent: normalizeSignInIntent(input.signInIntent),
     createdAt: now,
     expiresAt: now + TRANSACTION_LIFETIME_SECONDS,
   };
@@ -101,6 +108,7 @@ export async function completeAuth0Login(
   }
 
   let permissions: string[] = [];
+  let accessTokenRoles = [] as ReturnType<typeof parseWorkspaceRoles>;
   if (config.audience && !tokenSet.accessToken) {
     throw new AuthError(
       "missing_access_token",
@@ -124,17 +132,27 @@ export async function completeAuth0Login(
     permissions = parsePermissions(
       accessClaims[config.permissionsClaim] ?? accessClaims.permissions,
     );
+    accessTokenRoles = parseWorkspaceRoles(
+      accessClaims[config.rolesClaim],
+    );
   }
 
-  const assertedRoles = parseWorkspaceRoles(claims[config.rolesClaim]);
+  const assertedRoles = [
+    ...new Set([
+      ...accessTokenRoles,
+      ...parseWorkspaceRoles(claims[config.rolesClaim]),
+    ]),
+  ];
   const resolved = await (
     input.identityAdapter ?? deterministicIdentityAdapter
   ).resolveIdentity({
     issuer: claims.iss,
     subject: claims.sub,
     email: typeof claims.email === "string" ? claims.email : null,
+    emailVerified: claims.email_verified === true,
     organizationId,
     assertedRoles,
+    signInIntent: input.transaction.signInIntent ?? null,
   });
   const now = Math.floor(Date.now() / 1000);
 
@@ -147,28 +165,14 @@ export async function completeAuth0Login(
     organizationId,
     userId: resolved.userId,
     workspaceId: resolved.workspaceId,
+    accountType: resolved.accountType,
     roles: resolved.roles,
-    permissions,
+    permissions: permissionsForRoles(resolved.roles),
+    tokenRoles: assertedRoles,
+    tokenPermissions: permissions,
+    signInIntent: input.transaction.signInIntent ?? null,
     issuedAt: now,
     expiresAt: Math.min(claims.exp, now + SESSION_LIFETIME_SECONDS),
-  };
-}
-
-export function createDemoSession(): AuthSession {
-  const now = Math.floor(Date.now() / 1000);
-  return {
-    version: 1,
-    mode: "demo",
-    issuer: "https://demo.invalid/",
-    subject: "demo-user",
-    email: "demo@example.com",
-    organizationId: null,
-    userId: "usr_demo",
-    workspaceId: "wsp_demo",
-    roles: ["owner"],
-    permissions: ["billing:manage", "members:manage", "product:use"],
-    issuedAt: now,
-    expiresAt: now + SESSION_LIFETIME_SECONDS,
   };
 }
 

@@ -16,7 +16,10 @@ import {
   encodeSession,
 } from "@/lib/auth/session";
 import { getDb } from "@/db";
-import { createDataAuthStore } from "@/lib/data";
+import {
+  createDataAuthStore,
+  MembershipRequiredError,
+} from "@/lib/data";
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -80,14 +83,7 @@ export async function GET(request: Request): Promise<Response> {
     );
     return new Response(null, { status: 302, headers });
   } catch (error) {
-    const authError =
-      error instanceof AuthError
-        ? error
-        : new AuthError(
-            "callback_failed",
-            "The login callback failed.",
-            500,
-          );
+    const authError = toAuthError(error);
     const headers = new Headers({
       "cache-control": "no-store",
       "content-type": "application/json; charset=utf-8",
@@ -101,4 +97,27 @@ export async function GET(request: Request): Promise<Response> {
       { status: authError.status, headers },
     );
   }
+}
+
+function toAuthError(error: unknown): AuthError {
+  if (error instanceof AuthError) return error;
+  if (error instanceof MembershipRequiredError) {
+    return new AuthError(
+      "membership_required",
+      "Your Auth0 account is valid but has no authorized workspace.",
+      403,
+    );
+  }
+
+  // Do not log authorization codes, tokens, cookies, or request headers.
+  console.error("Unexpected Auth0 callback failure", {
+    name: error instanceof Error ? error.name : "UnknownError",
+    message:
+      error instanceof Error ? error.message : "Unknown callback failure",
+  });
+  return new AuthError(
+    "callback_failed",
+    "The login callback failed.",
+    500,
+  );
 }

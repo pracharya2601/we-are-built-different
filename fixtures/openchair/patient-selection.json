@@ -1,0 +1,10 @@
+{
+  "name": "patient-selection",
+  "description": "The nonprofit selects and orders eligible patients.",
+  "activeStage": "PATIENT_SELECTION",
+  "lastJourneyStage": "PATIENT_SELECTION",
+  "workflowVersion": 2,
+  "selectedCandidateCount": 3,
+  "sponsorStatus": "waiting",
+  "patientStatus": "waiting"
+}

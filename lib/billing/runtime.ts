@@ -31,22 +31,14 @@ export function createBillingRuntime(input: {
     auth: input.auth,
     store: input.store,
     config,
-    stripe:
-      config.mode === "live"
-        ? new StripeRestGateway(config.secretKey, { fetch: input.fetch })
-        : null,
+    stripe: new StripeRestGateway(config.secretKey, { fetch: input.fetch }),
   };
 }
 
 export function getBillingRuntime(): BillingRuntime {
-  return (
-    (globalThis as RuntimeGlobal)[RUNTIME_KEY] ?? {
-      auth: unavailableAuth,
-      store: unavailableStore,
-      config: loadBillingConfig({}),
-      stripe: null,
-    }
-  );
+  const runtime = (globalThis as RuntimeGlobal)[RUNTIME_KEY];
+  if (!runtime) return unavailable();
+  return runtime;
 }
 
 const unavailable = (): never => {
@@ -55,18 +47,4 @@ const unavailable = (): never => {
     "billing_runtime_not_configured",
     503,
   );
-};
-
-const unavailableAuth: BillingAuthAdapter = {
-  requireBillingManager: async () => unavailable(),
-};
-
-const unavailableStore: BillingStore = {
-  getBillingAccount: async () => unavailable(),
-  getBillingAccountByStripeCustomerId: async () => unavailable(),
-  setStripeCustomerId: async () => unavailable(),
-  claimStripeEvent: async () => unavailable(),
-  completeStripeEvent: async () => unavailable(),
-  failStripeEvent: async () => unavailable(),
-  upsertSubscriptionProjection: async () => unavailable(),
 };

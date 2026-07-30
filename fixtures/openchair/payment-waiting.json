@@ -1,0 +1,16 @@
+{
+  "name": "payment-waiting",
+  "description": "Sponsor funding is confirmed while patient payment is pending.",
+  "activeStage": "PAYMENT",
+  "lastJourneyStage": "PAYMENT",
+  "workflowVersion": 6,
+  "selectedCandidateCount": 3,
+  "acceptedCandidateId": "cand_22222222222222222222222222222222",
+  "acceptedPatientName": "Ahmed",
+  "previousOutcomes": [
+    { "displayName": "Maria", "outcome": "No answer" },
+    { "displayName": "Ahmed", "outcome": "Accepted" }
+  ],
+  "sponsorStatus": "paid",
+  "patientStatus": "waiting"
+}

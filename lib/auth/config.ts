@@ -1,62 +1,85 @@
-import type { AuthMode } from "./types";
-
-const DEMO_SECRET =
-  "built-different-demo-session-secret-not-for-live-authentication";
-
 export type AuthConfig = {
-  mode: AuthMode;
+  mode: "auth0";
   issuer: string;
   clientId: string;
-  clientSecret: string | null;
-  audience: string | null;
+  clientSecret: string;
+  audience: string;
   appBaseUrl: string;
   sessionSecret: string;
   rolesClaim: string;
   permissionsClaim: string;
 };
 
-export function getAuthConfig(requestUrl?: string): AuthConfig {
+const REQUIRED_AUTH0_ENV = [
+  "AUTH0_DOMAIN",
+  "AUTH0_CLIENT_ID",
+  "AUTH0_CLIENT_SECRET",
+  "AUTH0_APP_BASE_URL",
+  "AUTH0_SESSION_SECRET",
+  "AUTH0_AUDIENCE",
+] as const;
+
+export class AuthConfigurationError extends Error {
+  constructor(readonly missing: readonly string[]) {
+    super(`Auth0 configuration is required. Missing: ${missing.join(", ")}.`);
+    this.name = "AuthConfigurationError";
+  }
+}
+
+export function getAuthConfigurationStatus(): {
+  configured: boolean;
+  missing: string[];
+} {
+  const missing = REQUIRED_AUTH0_ENV.filter((name) => !env(name));
+  const sessionSecret = env("AUTH0_SESSION_SECRET");
+  if (
+    sessionSecret &&
+    sessionSecret.length < 32 &&
+    !missing.includes("AUTH0_SESSION_SECRET")
+  ) {
+    missing.push("AUTH0_SESSION_SECRET");
+  }
+  return { configured: missing.length === 0, missing };
+}
+
+export function authSetupPath(
+  returnTo = "/dashboard",
+  signInIntent?: string | null,
+): string {
+  const params = new URLSearchParams({ returnTo });
+  if (signInIntent) params.set("intent", signInIntent);
+  return `/auth/setup?${params.toString()}`;
+}
+
+export function getAuthConfig(_requestUrl?: string): AuthConfig {
+  void _requestUrl;
   const domain = env("AUTH0_DOMAIN");
   const clientId = env("AUTH0_CLIENT_ID");
-  const configuredValues = [domain, clientId].filter(Boolean).length;
-
-  if (configuredValues === 1) {
-    throw new Error(
-      "Auth0 is partially configured; set both AUTH0_DOMAIN and AUTH0_CLIENT_ID.",
-    );
-  }
-
-  if (!domain || !clientId) {
-    return {
-      mode: "demo",
-      issuer: "https://demo.invalid/",
-      clientId: "demo",
-      clientSecret: null,
-      audience: null,
-      appBaseUrl: resolveBaseUrl(requestUrl),
-      sessionSecret: env("AUTH0_SESSION_SECRET") ?? DEMO_SECRET,
-      rolesClaim: defaultRolesClaim(),
-      permissionsClaim: env("AUTH0_PERMISSIONS_CLAIM") ?? "permissions",
-    };
-  }
-
+  const clientSecret = env("AUTH0_CLIENT_SECRET");
   const sessionSecret = env("AUTH0_SESSION_SECRET");
   const appBaseUrl = env("AUTH0_APP_BASE_URL");
-  if (!sessionSecret || sessionSecret.length < 32) {
-    throw new Error(
-      "AUTH0_SESSION_SECRET must contain at least 32 characters in Auth0 mode.",
-    );
+  const audience = env("AUTH0_AUDIENCE");
+  const missing = getAuthConfigurationStatus().missing;
+  if (
+    !domain ||
+    !clientId ||
+    !clientSecret ||
+    !appBaseUrl ||
+    !sessionSecret ||
+    !audience
+  ) {
+    throw new AuthConfigurationError(missing);
   }
-  if (!appBaseUrl) {
-    throw new Error("AUTH0_APP_BASE_URL is required in Auth0 mode.");
+  if (sessionSecret.length < 32) {
+    throw new AuthConfigurationError(["AUTH0_SESSION_SECRET"]);
   }
 
   return {
     mode: "auth0",
     issuer: normalizeIssuer(domain),
     clientId,
-    clientSecret: env("AUTH0_CLIENT_SECRET"),
-    audience: env("AUTH0_AUDIENCE"),
+    clientSecret,
+    audience,
     appBaseUrl: normalizeBaseUrl(appBaseUrl),
     sessionSecret,
     rolesClaim: defaultRolesClaim(),
@@ -65,20 +88,20 @@ export function getAuthConfig(requestUrl?: string): AuthConfig {
 }
 
 export function isAuth0Configured(): boolean {
-  return Boolean(env("AUTH0_DOMAIN") && env("AUTH0_CLIENT_ID"));
+  return Boolean(
+    env("AUTH0_DOMAIN") &&
+      env("AUTH0_CLIENT_ID") &&
+      env("AUTH0_CLIENT_SECRET") &&
+      env("AUTH0_APP_BASE_URL") &&
+      env("AUTH0_AUDIENCE") &&
+      (env("AUTH0_SESSION_SECRET")?.length ?? 0) >= 32,
+  );
 }
 
 function defaultRolesClaim(): string {
   return (
     env("AUTH0_ROLES_CLAIM") ?? "https://built-different.app/roles"
   );
-}
-
-function resolveBaseUrl(requestUrl?: string): string {
-  const configured = env("AUTH0_APP_BASE_URL");
-  if (configured) return normalizeBaseUrl(configured);
-  if (requestUrl) return new URL(requestUrl).origin;
-  return "http://localhost:3000";
 }
 
 function normalizeIssuer(value: string): string {

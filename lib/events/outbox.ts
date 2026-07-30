@@ -41,11 +41,16 @@ export async function claimOutboxBatch(
     limit?: number;
     leaseMs?: number;
     now?: Date;
+    eventTypes?: string[];
   } = {},
 ) {
   const now = options.now ?? new Date();
   const limit = Math.max(1, Math.min(options.limit ?? 25, 100));
   const leaseMs = Math.max(options.leaseMs ?? 30_000, 5_000);
+  const eventTypeCondition =
+    options.eventTypes && options.eventTypes.length > 0
+      ? inArray(outboxEvents.eventType, options.eventTypes)
+      : undefined;
   const candidates = await db
     .select({ id: outboxEvents.id })
     .from(outboxEvents)
@@ -53,6 +58,7 @@ export async function claimOutboxBatch(
       and(
         inArray(outboxEvents.state, ["pending", "failed"]),
         lte(outboxEvents.availableAt, now),
+        eventTypeCondition,
       ),
     )
     .orderBy(outboxEvents.availableAt, outboxEvents.createdAt)

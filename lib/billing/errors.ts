@@ -1,22 +1,32 @@
 export class BillingError extends Error {
+  readonly code: string;
+  readonly status: number;
+
   constructor(
     message: string,
-    readonly code: string,
-    readonly status: number,
+    code: string,
+    status: number,
   ) {
     super(message);
     this.name = "BillingError";
+    this.code = code;
+    this.status = status;
   }
 }
 
 export class StripeApiError extends BillingError {
+  readonly stripeStatus: number;
+  readonly stripeRequestId: string | null;
+
   constructor(
     message: string,
-    readonly stripeStatus: number,
-    readonly stripeRequestId: string | null,
+    stripeStatus: number,
+    stripeRequestId: string | null,
   ) {
     super(message, "stripe_api_error", 502);
     this.name = "StripeApiError";
+    this.stripeStatus = stripeStatus;
+    this.stripeRequestId = stripeRequestId;
   }
 }
 

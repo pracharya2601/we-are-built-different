@@ -1,0 +1,12 @@
+{
+  "name": "workflow-failed",
+  "description": "An operational failure stopped outreach for human review.",
+  "activeStage": "FAILED",
+  "lastJourneyStage": "CALLING_PATIENTS",
+  "workflowVersion": 5,
+  "selectedCandidateCount": 3,
+  "currentCandidateName": "Ahmed",
+  "sponsorStatus": "paid",
+  "patientStatus": "waiting",
+  "blockedReason": "Outreach requires human review before the workflow can continue."
+}

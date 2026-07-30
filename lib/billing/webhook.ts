@@ -1,12 +1,13 @@
-import { projectSubscriptionAccess } from "./access";
-import { BillingError } from "./errors";
-import { verifyStripeWebhookSignature } from "./stripe-signature";
+import { projectSubscriptionAccess } from "./access.ts";
+import { BillingError } from "./errors.ts";
+import { dynamicPricingKey } from "./pricing-router.ts";
+import { verifyStripeWebhookSignature } from "./stripe-signature.ts";
 import {
   PLATFORM_ACCESS_FEATURE,
   type BillingRuntime,
   type StripeEventEnvelope,
   type StripeSubscriptionStatus,
-} from "./types";
+} from "./types.ts";
 
 const SUBSCRIPTION_EVENTS = new Set([
   "customer.subscription.created",
@@ -20,14 +21,6 @@ export async function ingestStripeWebhook(
   request: Request,
   runtime: BillingRuntime,
 ): Promise<{ duplicate: boolean; handled: boolean }> {
-  if (runtime.config.mode !== "live" || !runtime.config.webhookSecret) {
-    throw new BillingError(
-      "Stripe webhooks are unavailable until live credentials are configured.",
-      "stripe_webhook_not_configured",
-      503,
-    );
-  }
-
   const signatureHeader = request.headers.get("stripe-signature");
   if (!signatureHeader) {
     throw new BillingError(
@@ -108,11 +101,29 @@ export async function applyStripeEvent(
   }
 
   const periodEnd = unixDate(subscription.currentPeriodEnd);
-  const priceIsAllowed =
-    subscription.priceId !== null &&
-    [...runtime.config.plans.values()].some(
-      (plan) => plan.priceId === subscription.priceId,
-    );
+  const catalogPlan =
+    subscription.priceId === null
+      ? null
+      : [...runtime.config.plans.values()].find(
+          (plan) => plan.priceId === subscription.priceId,
+        ) ?? null;
+  const dynamicProduct = subscription.productKey
+    ? runtime.config.products.get(subscription.productKey)
+    : null;
+  const dynamicPriceIsAllowed = Boolean(
+    subscription.pricingKind === "dynamic" &&
+      dynamicProduct &&
+      subscription.productId === dynamicProduct.productId &&
+      subscription.currency === "usd" &&
+      subscription.interval === "month" &&
+      subscription.unitAmount !== null &&
+      subscription.pricingKey ===
+        dynamicPricingKey(dynamicProduct.key, subscription.unitAmount),
+  );
+  const resolvedPricingKey =
+    catalogPlan?.key ??
+    (dynamicPriceIsAllowed ? subscription.pricingKey : null);
+  const priceIsAllowed = resolvedPricingKey !== null;
   const access = priceIsAllowed
     ? projectSubscriptionAccess({
         status: subscription.status,
@@ -127,6 +138,7 @@ export async function applyStripeEvent(
     stripeCustomerId: subscription.customerId,
     stripeSubscriptionId: subscription.id,
     stripePriceId: subscription.priceId,
+    pricingKey: resolvedPricingKey,
     stripeStatus: subscription.status,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     currentPeriodEnd: periodEnd,
@@ -172,8 +184,15 @@ function parseSubscription(value: unknown): {
   id: string;
   customerId: string;
   workspaceId: string | null;
+  pricingKey: string | null;
+  pricingKind: string | null;
+  productKey: string | null;
   status: StripeSubscriptionStatus;
   priceId: string | null;
+  productId: string | null;
+  currency: string | null;
+  unitAmount: number | null;
+  interval: string | null;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: number | null;
 } {
@@ -199,19 +218,54 @@ function parseSubscription(value: unknown): {
     metadata && typeof metadata.workspace_id === "string"
       ? metadata.workspace_id
       : null;
+  const pricingKey =
+    metadata && typeof metadata.pricing_key === "string"
+      ? metadata.pricing_key
+      : null;
+  const pricingKind =
+    metadata && typeof metadata.pricing_kind === "string"
+      ? metadata.pricing_kind
+      : null;
+  const productKey =
+    metadata && typeof metadata.product_key === "string"
+      ? metadata.product_key
+      : null;
   const items = isRecord(value.items) && Array.isArray(value.items.data)
     ? value.items.data
     : [];
   const firstItem = isRecord(items[0]) ? items[0] : null;
   const price = firstItem && isRecord(firstItem.price) ? firstItem.price : null;
   const priceId = price && typeof price.id === "string" ? price.id : null;
+  const productId =
+    price && typeof price.product === "string"
+      ? price.product
+      : price &&
+          isRecord(price.product) &&
+          typeof price.product.id === "string"
+        ? price.product.id
+        : null;
+  const recurring =
+    price && isRecord(price.recurring) ? price.recurring : null;
 
   return {
     id: value.id,
     customerId,
     workspaceId,
+    pricingKey,
+    pricingKind,
+    productKey,
     status: value.status,
     priceId,
+    productId,
+    currency: price && typeof price.currency === "string" ? price.currency : null,
+    unitAmount:
+      price && typeof price.unit_amount === "number"
+        ? price.unit_amount
+        : null,
+    interval:
+      recurring && typeof recurring.interval === "string"
+        ? recurring.interval
+        : null,
     cancelAtPeriodEnd: value.cancel_at_period_end === true,
     currentPeriodEnd:
       typeof value.current_period_end === "number"

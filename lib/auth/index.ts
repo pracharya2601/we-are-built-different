@@ -1,12 +1,35 @@
 export {
+  ROLE_LABELS,
+  ROLE_PERMISSIONS,
+  canManageRole,
+  effectivePermissions,
+  overridesForEffectivePermissions,
+  permissionsForRoles,
+  roleHasPermission,
+  type PermissionOverride,
+} from "./authorization";
+export {
   getAuthContext,
   getAuthMode,
   getAuthSession,
   requireAuthContext,
   requireWorkspacePermission,
 } from "./context";
-export { getAuthConfig, isAuth0Configured } from "./config";
+export {
+  AuthConfigurationError,
+  authSetupPath,
+  getAuthConfig,
+  getAuthConfigurationStatus,
+  isAuth0Configured,
+} from "./config";
 export type { AuthConfig } from "./config";
+export {
+  AuthGuard,
+  DashboardAccessGuard,
+  withApiAuth,
+  withPlatformOwner,
+} from "./guards";
+export { PlatformOwnerGuard, requirePlatformOwner } from "./platform";
 export {
   deterministicIdentityAdapter,
   parsePermissions,
@@ -19,11 +42,17 @@ export {
   authCallbackUrl,
   beginAuth0Login,
   completeAuth0Login,
-  createDemoSession,
   safeReturnTo,
 } from "./flow";
 export {
+  normalizeSignInIntent,
+  signInIntentLabel,
+  SIGN_IN_INTENTS,
+  type SignInIntent,
+} from "./sign-in-intent";
+export {
   AuthError,
+  WORKSPACE_PERMISSIONS,
   WORKSPACE_ROLES,
   type AuthContext,
   type AuthMode,

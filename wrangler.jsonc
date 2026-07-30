@@ -1,0 +1,99 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "account_id": "08bf6d58600c6d6b8e0734803d477859",
+  "name": "built-different-control-plane",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-05-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    "APP_ENV": "development",
+    "IMAGE_UPLOADS_BUCKET_NAME": "built-different-image-uploads-local",
+    "IMAGE_UPLOAD_MAX_BYTES": "10485760"
+  },
+  "images": {
+    "binding": "IMAGES"
+  },
+  "r2_buckets": [
+    {
+      "binding": "IMAGE_UPLOADS",
+      "bucket_name": "built-different-image-uploads-local"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "CALL_AUTOMATION_QUEUE",
+        "queue": "built-different-call-automation-local"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "built-different-call-automation-local",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "built-different-call-automation-local-dlq"
+      }
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "built-different-local",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "env": {
+    "staging": {
+      "name": "built-different-control-plane-staging",
+      "vars": {
+        "APP_ENV": "staging",
+        "BILLING_GRACE_PERIOD_SECONDS": "259200",
+        "IMAGE_UPLOADS_BUCKET_NAME": "built-different-image-uploads-staging",
+        "IMAGE_UPLOAD_MAX_BYTES": "10485760",
+        "STRIPE_WEBHOOK_TOLERANCE_SECONDS": "300"
+      },
+      "triggers": {
+        "crons": ["* * * * *"]
+      },
+      "images": {
+        "binding": "IMAGES"
+      },
+      "r2_buckets": [
+        {
+          "binding": "IMAGE_UPLOADS",
+          "bucket_name": "built-different-image-uploads-staging"
+        }
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "CALL_AUTOMATION_QUEUE",
+            "queue": "built-different-call-automation-staging"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "built-different-call-automation-staging",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "dead_letter_queue": "built-different-call-automation-staging-dlq"
+          }
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "built-different-staging",
+          "database_id": "9b94feaa-09b2-4c88-ab8a-9522f1810a85",
+          "migrations_dir": "drizzle"
+        }
+      ]
+    }
+  }
+}

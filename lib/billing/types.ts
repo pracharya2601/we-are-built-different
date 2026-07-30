@@ -16,6 +16,7 @@ export type BillingAuthContext = {
   userId: string;
   workspaceId: string;
   email: string | null;
+  accountType: "service_provider" | "nonprofit" | "beneficiary";
 };
 
 export interface BillingAuthAdapter {
@@ -37,6 +38,7 @@ export type SubscriptionProjection = {
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   stripePriceId: string | null;
+  pricingKey: string | null;
   stripeStatus: StripeSubscriptionStatus;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: Date | null;
@@ -72,26 +74,39 @@ export interface BillingStore {
 
 export type BillingPlan = {
   key: string;
+  productKey: string;
   priceId: string;
   label: string;
 };
 
-export type BillingConfig =
+export type BillingProduct = {
+  key: string;
+  productId: string;
+  label: string;
+};
+
+export type CheckoutPrice =
+  | (BillingPlan & { kind: "catalog" })
   | {
-      mode: "demo";
-      plans: ReadonlyMap<string, BillingPlan>;
-      gracePeriodSeconds: number;
-      webhookToleranceSeconds: number;
-    }
-  | {
-      mode: "live";
-      secretKey: string;
-      webhookSecret: string | null;
-      expectedLivemode: boolean | null;
-      plans: ReadonlyMap<string, BillingPlan>;
-      gracePeriodSeconds: number;
-      webhookToleranceSeconds: number;
+      kind: "dynamic";
+      key: string;
+      productKey: string;
+      productId: string;
+      label: string;
+      currency: "usd";
+      unitAmount: number;
+      interval: "month";
     };
+
+export type BillingConfig = {
+  secretKey: string;
+  webhookSecret: string;
+  expectedLivemode: boolean | null;
+  plans: ReadonlyMap<string, BillingPlan>;
+  products: ReadonlyMap<string, BillingProduct>;
+  gracePeriodSeconds: number;
+  webhookToleranceSeconds: number;
+};
 
 export type StripeEventEnvelope = {
   id: string;
@@ -121,7 +136,7 @@ export interface StripeBillingGateway {
   createCheckoutSession(input: {
     workspaceId: string;
     stripeCustomerId: string;
-    plan: BillingPlan;
+    price: CheckoutPrice;
     successUrl: string;
     cancelUrl: string;
     idempotencyKey: string;
@@ -136,6 +151,6 @@ export type BillingRuntime = {
   auth: BillingAuthAdapter;
   store: BillingStore;
   config: BillingConfig;
-  stripe: StripeBillingGateway | null;
+  stripe: StripeBillingGateway;
   now?: () => Date;
 };

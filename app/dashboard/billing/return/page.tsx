@@ -1,19 +1,22 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function BillingReturnPage() {
-  return (
-    <div className="content-card" style={{ maxWidth: 680, margin: "16vh auto" }}>
-      <p className="kicker">Checkout returned</p>
-      <h1 style={{ fontSize: "3rem", letterSpacing: "-0.05em" }}>
-        We’re confirming the subscription.
-      </h1>
-      <p style={{ color: "var(--muted)", lineHeight: 1.7 }}>
-        Access is granted only after a verified Stripe webhook updates the local
-        entitlement. Refreshing or editing this URL cannot activate a product.
-      </p>
-      <Link className="button button-primary" href="/dashboard">
-        Return to overview
-      </Link>
-    </div>
+import { getDb } from "@/db";
+import { requireAuthContext } from "@/lib/auth";
+import { companyConfig } from "@/lib/config";
+import { getWorkspaceAccess } from "@/lib/data";
+
+import { SubscriptionConfirmation } from "./subscription-confirmation";
+
+export default async function BillingReturnPage() {
+  const auth = await requireAuthContext();
+  const accessState = await getWorkspaceAccess(
+    getDb(),
+    auth.workspaceId,
+    companyConfig.entitlements.productAccessKey,
   );
+  if (["active", "trialing", "grace"].includes(accessState)) {
+    redirect("/dashboard?subscription=active");
+  }
+
+  return <SubscriptionConfirmation workspaceId={auth.workspaceId} />;
 }

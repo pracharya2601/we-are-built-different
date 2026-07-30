@@ -1,25 +1,26 @@
 import Link from "next/link";
+import { companyConfig } from "@/lib/config";
 
 const nodes = [
   {
     label: "01 / Authenticate",
     title: "Auth0",
-    body: "Proves identity and issues an organization-scoped token for the product API.",
+    body: "Proves each person’s identity before OpenChair resolves workspace access.",
   },
   {
     label: "02 / Resolve",
-    title: "Control plane",
-    body: "Maps provider identity to stable users, workspaces, roles, and current access.",
+    title: "Workspaces",
+    body: "Keeps clinics, sponsors, participant records, and permissions inside a tenant boundary.",
   },
   {
-    label: "03 / Project",
-    title: "Entitlements",
-    body: "Turns asynchronous Stripe state into fast, durable product permissions.",
+    label: "03 / Record",
+    title: "Care funding",
+    body: "Separates benefactors, beneficiaries, service providers, and balanced funding records.",
   },
   {
-    label: "04 / Consume",
-    title: "Core product",
-    body: "Uses the stable contract without handling billing vendors or identity administration.",
+    label: "04 / Verify",
+    title: "Payment state",
+    body: "Uses signed, idempotent Stripe events before changing subscription or funding state.",
   },
 ];
 
@@ -28,12 +29,12 @@ export default function ArchitecturePage() {
     <main>
       <nav className="shell nav" aria-label="Primary navigation">
         <Link className="brand" href="/">
-          <span className="brand-mark">B/D</span>
-          <span>Built Different</span>
+          <span className="brand-mark">{companyConfig.company.mark}</span>
+          <span>{companyConfig.company.name}</span>
         </Link>
         <Link
           className="button button-quiet"
-          href="/api/auth/login?returnTo=/dashboard"
+          href="/auth/select-role?returnTo=/dashboard"
         >
           Sign in
         </Link>
@@ -41,16 +42,17 @@ export default function ArchitecturePage() {
       <section className="shell hero">
         <div className="eyebrow">
           <span className="status-dot" />
-          Integration contract
+          Current operating foundation
         </div>
         <h1>
-          One doorway.
+          Trust first.
           <br />
-          <span>Any product behind it.</span>
+          <span>Care follows.</span>
         </h1>
         <p className="hero-copy">
-          Authentication, authorization, and payment state stay in the control
-          plane. Product teams receive a small, versioned contract.
+          OpenChair’s current control plane keeps identity, tenant access,
+          participant records, and verified payment state together. It does not
+          pretend that a marketplace or patient-care product already exists.
         </p>
         <div className="architecture-grid">
           {nodes.map((node) => (

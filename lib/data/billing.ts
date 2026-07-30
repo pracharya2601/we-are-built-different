@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import type { AppDatabase } from "../../db";
 import {
@@ -51,6 +51,30 @@ export async function getBillingAccountByStripeCustomerId(
   );
 }
 
+export async function getWorkspaceSubscription(
+  db: AppDatabase,
+  workspaceId: string,
+) {
+  return (
+    (await db
+      .select({
+        status: subscriptions.status,
+        priceId: subscriptions.providerPriceId,
+        pricingKey: subscriptions.pricingKey,
+        cancelAtPeriodEnd: subscriptions.cancelAtPeriodEnd,
+        currentPeriodEnd: subscriptions.currentPeriodEnd,
+      })
+      .from(subscriptions)
+      .innerJoin(
+        billingAccounts,
+        eq(subscriptions.billingAccountId, billingAccounts.id),
+      )
+      .where(eq(billingAccounts.workspaceId, workspaceId))
+      .orderBy(desc(subscriptions.providerUpdatedAt))
+      .limit(1))[0] ?? null
+  );
+}
+
 export async function upsertStripeBillingAccount(
   db: AppDatabase,
   input: {
@@ -91,6 +115,7 @@ export async function upsertStripeSubscription(
     billingAccountId: string;
     stripeSubscriptionId: string;
     stripePriceId?: string | null;
+    pricingKey?: string | null;
     status: SubscriptionStatus;
     cancelAtPeriodEnd?: boolean;
     currentPeriodStart?: Date | null;
@@ -108,6 +133,7 @@ export async function upsertStripeSubscription(
       billingAccountId: input.billingAccountId,
       providerSubscriptionId: input.stripeSubscriptionId,
       providerPriceId: input.stripePriceId ?? null,
+      pricingKey: input.pricingKey ?? null,
       status: input.status,
       cancelAtPeriodEnd: input.cancelAtPeriodEnd ?? false,
       currentPeriodStart: input.currentPeriodStart ?? null,
@@ -123,6 +149,7 @@ export async function upsertStripeSubscription(
       set: {
         billingAccountId: input.billingAccountId,
         providerPriceId: input.stripePriceId ?? null,
+        pricingKey: input.pricingKey ?? null,
         status: input.status,
         cancelAtPeriodEnd: input.cancelAtPeriodEnd ?? false,
         currentPeriodStart: input.currentPeriodStart ?? null,
@@ -147,6 +174,7 @@ export async function projectWorkspaceAccess(
     sourceSubscriptionId?: string | null;
     validUntil?: Date | null;
     eventId?: string;
+    pricingKey?: string | null;
   },
 ): Promise<boolean> {
   const now = new Date();
@@ -189,6 +217,7 @@ export async function projectWorkspaceAccess(
         workspaceId: input.workspaceId,
         key: "platform_access",
         accessState: input.accessState,
+        pricingKey: input.pricingKey ?? null,
         revision: input.revision,
         validUntil: input.validUntil?.toISOString() ?? null,
       },

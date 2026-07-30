@@ -1,0 +1,4 @@
+interface:
+  display_name: "Protect LLM Data"
+  short_description: "Keep personal data out of LLM requests"
+  default_prompt: "Use $protect-llm-data to add a privacy-safe boundary to this product’s LLM calls."

@@ -127,6 +127,7 @@ export function createDataBillingStore(db: AppDatabase): BillingStore {
         billingAccountId: account.id,
         stripeSubscriptionId: projection.stripeSubscriptionId,
         stripePriceId: projection.stripePriceId,
+        pricingKey: projection.pricingKey,
         status: normalizeSubscriptionStatus(projection.stripeStatus),
         cancelAtPeriodEnd: projection.cancelAtPeriodEnd,
         currentPeriodEnd: projection.currentPeriodEnd,
@@ -144,6 +145,7 @@ export function createDataBillingStore(db: AppDatabase): BillingStore {
         revision,
         sourceSubscriptionId: subscription.id,
         validUntil: projection.graceEndsAt,
+        pricingKey: projection.pricingKey,
         eventId: `stripe_${projection.sourceEventId}`,
       });
     },

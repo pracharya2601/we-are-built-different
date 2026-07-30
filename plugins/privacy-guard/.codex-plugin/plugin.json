@@ -1,0 +1,26 @@
+{
+  "name": "privacy-guard",
+  "version": "0.1.0",
+  "description": "Reusable privacy boundary for keeping personal data and credentials out of LLM requests.",
+  "author": {
+    "name": "Built Different"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Privacy Guard",
+    "shortDescription": "Keep personal data out of LLM requests.",
+    "longDescription": "Adds a provider-neutral TypeScript privacy gateway and a workflow for minimizing, detecting, and tokenizing sensitive data before any LLM call.",
+    "developerName": "Built Different",
+    "category": "Developer Tools",
+    "capabilities": [
+      "PII tokenization",
+      "Credential removal",
+      "Privacy-safe audit reports"
+    ],
+    "defaultPrompt": [
+      "Add a privacy-safe boundary to our LLM calls.",
+      "Audit this workflow for personal data sent to AI.",
+      "Create domain-specific PII detectors for this app."
+    ]
+  }
+}

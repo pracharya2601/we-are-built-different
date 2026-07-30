@@ -108,7 +108,9 @@ export async function exchangeAuthorizationCode(
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body,
-    redirect: "error",
+    // Cloudflare Workers supports manual redirect handling, not "error".
+    // Requiring response.ok below still rejects every redirect response.
+    redirect: "manual",
   });
   if (!response.ok) {
     throw new AuthError(
@@ -324,7 +326,7 @@ async function getSigningKeys(
 
   const response = await fetch(new URL(".well-known/jwks.json", issuer), {
     headers: { accept: "application/json" },
-    redirect: "error",
+    redirect: "manual",
   });
   if (!response.ok) {
     throw new AuthError(

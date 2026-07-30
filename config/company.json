@@ -1,0 +1,36 @@
+{
+  "company": {
+    "id": "openchair",
+    "name": "OpenChair",
+    "legalName": "OpenChair",
+    "shortName": "OC",
+    "mark": "O/C",
+    "supportEmail": null,
+    "website": null
+  },
+  "application": {
+    "name": "Care Capacity Control Plane",
+    "description": "Turn canceled healthcare appointments into privately claimed, sponsor-funded care—starting with dental.",
+    "defaultWorkspaceName": "OpenChair",
+    "defaultWorkspaceSlug": "openchair"
+  },
+  "features": {
+    "billing": true,
+    "multiTenant": true,
+    "publicLandingPage": false
+  },
+  "access": {
+    "auth0OrganizationId": null,
+    "bootstrapOwnerEmails": ["pracharya2601@gmail.com"],
+    "allowedEmailDomains": ["gmail.com"]
+  },
+  "entitlements": {
+    "productAccessKey": "platform_access"
+  },
+  "branding": {
+    "accent": "#E45A35",
+    "accentDark": "#A83C22",
+    "background": "#F6F1E7",
+    "foreground": "#14201B"
+  }
+}

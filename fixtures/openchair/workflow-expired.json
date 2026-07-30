@@ -1,0 +1,13 @@
+{
+  "name": "workflow-expired",
+  "description": "The appointment expired before patient payment completed.",
+  "activeStage": "EXPIRED",
+  "lastJourneyStage": "PAYMENT",
+  "workflowVersion": 7,
+  "selectedCandidateCount": 3,
+  "acceptedCandidateId": "cand_22222222222222222222222222222222",
+  "acceptedPatientName": "Ahmed",
+  "sponsorStatus": "paid",
+  "patientStatus": "waiting",
+  "blockedReason": "The payment window ended before the appointment cutoff."
+}

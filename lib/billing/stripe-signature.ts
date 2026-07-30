@@ -1,4 +1,4 @@
-import { BillingError } from "./errors";
+import { BillingError } from "./errors.ts";
 
 const SIGNATURE_VERSION = "v1";
 

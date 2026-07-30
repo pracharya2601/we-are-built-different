@@ -1,0 +1,10 @@
+{
+  "name": "funding-approval",
+  "description": "The sponsor reviews its contribution before Checkout.",
+  "activeStage": "FUNDING_APPROVAL",
+  "lastJourneyStage": "FUNDING_APPROVAL",
+  "workflowVersion": 3,
+  "selectedCandidateCount": 3,
+  "sponsorStatus": "waiting",
+  "patientStatus": "waiting"
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `image_uploads` ADD `version_id` text;

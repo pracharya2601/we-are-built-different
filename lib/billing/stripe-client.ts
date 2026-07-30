@@ -1,4 +1,4 @@
-import { StripeApiError } from "./errors";
+import { StripeApiError } from "./errors.ts";
 import type {
   StripeBillingGateway,
   StripeCustomer,
@@ -17,13 +17,15 @@ type StripeClientOptions = {
  * crypto/stream APIs so it can run in Cloudflare Workers.
  */
 export class StripeRestGateway implements StripeBillingGateway {
+  private readonly secretKey: string;
   private readonly request: typeof fetch;
   private readonly apiBase: string;
 
   constructor(
-    private readonly secretKey: string,
+    secretKey: string,
     options: StripeClientOptions = {},
   ) {
+    this.secretKey = secretKey;
     this.request = options.fetch ?? fetch;
     this.apiBase = options.apiBase ?? STRIPE_API_BASE;
   }
@@ -44,26 +46,66 @@ export class StripeRestGateway implements StripeBillingGateway {
   createCheckoutSession(input: {
     workspaceId: string;
     stripeCustomerId: string;
-    plan: { key: string; priceId: string };
+    price:
+      | {
+          kind: "catalog";
+          key: string;
+          productKey: string;
+          priceId: string;
+        }
+      | {
+          kind: "dynamic";
+          key: string;
+          productKey: string;
+          productId: string;
+          currency: "usd";
+          unitAmount: number;
+          interval: "month";
+        };
     successUrl: string;
     cancelUrl: string;
     idempotencyKey: string;
   }): Promise<StripeHostedSession> {
+    const params = new URLSearchParams({
+      mode: "subscription",
+      customer: input.stripeCustomerId,
+      client_reference_id: input.workspaceId,
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+      "line_items[0][quantity]": "1",
+      "metadata[workspace_id]": input.workspaceId,
+      "metadata[pricing_key]": input.price.key,
+      "metadata[pricing_kind]": input.price.kind,
+      "metadata[product_key]": input.price.productKey,
+      "subscription_data[metadata][workspace_id]": input.workspaceId,
+      "subscription_data[metadata][pricing_key]": input.price.key,
+      "subscription_data[metadata][pricing_kind]": input.price.kind,
+      "subscription_data[metadata][product_key]": input.price.productKey,
+    });
+    if (input.price.kind === "catalog") {
+      params.set("line_items[0][price]", input.price.priceId);
+    } else {
+      params.set(
+        "line_items[0][price_data][currency]",
+        input.price.currency,
+      );
+      params.set(
+        "line_items[0][price_data][product]",
+        input.price.productId,
+      );
+      params.set(
+        "line_items[0][price_data][unit_amount]",
+        String(input.price.unitAmount),
+      );
+      params.set(
+        "line_items[0][price_data][recurring][interval]",
+        input.price.interval,
+      );
+    }
+
     return this.post(
       "/checkout/sessions",
-      new URLSearchParams({
-        mode: "subscription",
-        customer: input.stripeCustomerId,
-        client_reference_id: input.workspaceId,
-        success_url: input.successUrl,
-        cancel_url: input.cancelUrl,
-        "line_items[0][price]": input.plan.priceId,
-        "line_items[0][quantity]": "1",
-        "metadata[workspace_id]": input.workspaceId,
-        "metadata[plan_key]": input.plan.key,
-        "subscription_data[metadata][workspace_id]": input.workspaceId,
-        "subscription_data[metadata][plan_key]": input.plan.key,
-      }),
+      params,
       input.idempotencyKey,
     );
   }

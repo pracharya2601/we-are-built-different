@@ -1,20 +1,28 @@
 import { stableInternalId } from "./crypto";
 import {
+  accountTypeFromSignInIntent,
+  type AccountType,
+} from "../accounts";
+import {
   WORKSPACE_ROLES,
   type WorkspaceRole,
 } from "./types";
+import type { SignInIntent } from "./sign-in-intent";
 
 export type ExternalIdentity = {
   issuer: string;
   subject: string;
   email: string | null;
+  emailVerified: boolean;
   organizationId: string | null;
   assertedRoles: WorkspaceRole[];
+  signInIntent: SignInIntent | null;
 };
 
 export type ResolvedIdentity = {
   userId: string;
   workspaceId: string;
+  accountType: AccountType;
   roles: WorkspaceRole[];
 };
 
@@ -38,6 +46,7 @@ export const deterministicIdentityAdapter: AuthIdentityAdapter = {
     return {
       userId,
       workspaceId: await stableInternalId("wsp", workspaceKey),
+      accountType: accountTypeFromSignInIntent(identity.signInIntent),
       roles:
         identity.assertedRoles.length > 0
           ? identity.assertedRoles

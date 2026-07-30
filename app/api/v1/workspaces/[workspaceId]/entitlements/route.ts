@@ -1,12 +1,13 @@
 import { getDb } from "@/db";
-import { requireAuthContext } from "@/lib/auth";
+import { withApiAuth } from "@/lib/auth";
 import { getWorkspaceAccess } from "@/lib/data";
 
-export async function GET(
+export const GET = withApiAuth(async function getWorkspaceEntitlements(
   request: Request,
   context: { params: Promise<{ workspaceId: string }> },
+  auth,
 ): Promise<Response> {
-  const auth = await requireAuthContext(request);
+  void request;
   const { workspaceId } = await context.params;
 
   if (workspaceId !== auth.workspaceId) {
@@ -31,4 +32,4 @@ export async function GET(
     },
     { headers: { "cache-control": "no-store" } },
   );
-}
+});
