@@ -25,10 +25,10 @@ const signInHref = "/api/auth/login?returnTo=/dashboard";
 export default function Home() {
   const primaryHref = companyConfig.features.authentication
     ? signInHref
-    : "/appointments/demo-openchair";
+    : signInHref;
   const primaryLabel = companyConfig.features.authentication
     ? "Sign in"
-    : "Open preview";
+    : "Choose local user";
 
   return (
     <main>
@@ -71,9 +71,17 @@ export default function Home() {
           <Link className="button button-primary" href={primaryHref}>
             {companyConfig.features.authentication
               ? "Get started"
-              : "Explore the workflow"}
+              : "Open local dashboard"}
             <span aria-hidden="true">↗</span>
           </Link>
+          {!companyConfig.features.authentication ? (
+            <Link
+              className="button button-secondary"
+              href="/appointments/demo-openchair"
+            >
+              Explore the workflow
+            </Link>
+          ) : null}
           <a
             className="button button-secondary"
             href="https://www.nidcr.nih.gov/research/oralhealthinamerica/section-1-summary"

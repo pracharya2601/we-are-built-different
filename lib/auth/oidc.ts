@@ -1,4 +1,4 @@
-import type { AuthConfig } from "./config";
+import type { AuthConfig } from "./config.ts";
 import {
   constantTimeEqual,
   decodeBase64Url,
@@ -6,8 +6,8 @@ import {
   encodeBase64Url,
   sha256,
   toArrayBuffer,
-} from "./crypto";
-import { AuthError } from "./types";
+} from "./crypto.ts";
+import { AuthError } from "./types.ts";
 
 type JwtHeader = {
   alg?: unknown;

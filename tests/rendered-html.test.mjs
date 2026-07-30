@@ -31,15 +31,31 @@ test("landing source exposes navigation without embedding credentials", async ()
   );
 });
 
-test("sign-in starts Auth0 directly without an intermediate role page", async () => {
-  const [page, login, flow] = await Promise.all([
+test("sign-in uses a local chooser only when the development bypass is enabled", async () => {
+  const [page, login, localAuth, chooser, wrangler, flow] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/auth/local.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../app/auth/select-role/page.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8"),
     readFile(new URL("../lib/auth/flow.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /\/api\/auth\/login\?returnTo=\/dashboard/);
   assert.doesNotMatch(page, /\/auth\/select-role/);
+  assert.match(login, /isLocalAuthEnabled/);
+  assert.match(login, /provisionLocalPersona/);
+  assert.match(chooser, /LOCAL_AUTH_PERSONAS/);
+  assert.match(localAuth, /readEnv\("APP_ENV"\) === "development"/);
+  assert.match(localAuth, /readEnv\("LOCAL_AUTH_BYPASS"\) === "true"/);
+  assert.match(wrangler, /"LOCAL_AUTH_BYPASS": "true"/);
+  assert.equal(
+    JSON.parse(wrangler).env.staging.vars.LOCAL_AUTH_BYPASS,
+    undefined,
+  );
   assert.match(login, /normalizeSignInIntent/);
   assert.match(flow, /signInIntent/);
 });
@@ -80,15 +96,27 @@ test("auth-off focus mode exposes only the synthetic workflow preview", async ()
   assert.match(api, /withApiAuth/);
 });
 
-test("Auth0 API audience is required for token permissions", async () => {
-  const config = await readFile(
-    new URL("../lib/auth/config.ts", import.meta.url),
-    "utf8",
-  );
+test("Auth0 API audience is optional and only adds token assertions", async () => {
+  const [config, flow] = await Promise.all([
+    readFile(new URL("../lib/auth/config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/auth/flow.ts", import.meta.url), "utf8"),
+  ]);
 
   assert.match(config, /REQUIRED_AUTH0_ENV/);
-  assert.match(config, /"AUTH0_AUDIENCE"/);
-  assert.match(config, /audience: string/);
+  assert.match(config, /audience: string \| null/);
+  // The audience is no longer a precondition for signing in.
+  assert.doesNotMatch(
+    config.slice(
+      config.indexOf("REQUIRED_AUTH0_ENV"),
+      config.indexOf("] as const"),
+    ),
+    /AUTH0_AUDIENCE/,
+  );
+  // Access-token handling stays behind the audience guard.
+  assert.match(flow, /if \(config\.audience && !tokenSet\.accessToken\)/);
+  assert.match(flow, /if \(config\.audience && tokenSet\.accessToken\)/);
+  // Effective permissions still come from resolved D1 roles, not the token.
+  assert.match(flow, /permissions: permissionsForRoles\(resolved\.roles\)/);
 });
 
 test("protected pages and APIs use shared auth guards", async () => {

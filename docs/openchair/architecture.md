@@ -77,6 +77,10 @@ Builds the role-safe `WorkflowProjection` consumed by the shared appointment
 page. Projection code may combine module APIs or read models; it cannot decide
 official workflow state.
 
+The projection includes explicit data and action decisions and removes denied
+fields before serialization. See
+[Granular frontend access](frontend-access.md).
+
 ## Reliability rules
 
 - Commands carry an idempotency key and expected workflow version.

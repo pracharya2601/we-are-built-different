@@ -45,11 +45,30 @@ export {
   safeReturnTo,
 } from "./flow";
 export {
+  AUTH_FAILURE_PATH,
+  authFailurePath,
+  describeAuthFailure,
+  normalizeAuthFailureCode,
+  prefersHtml,
+  type AuthFailureCopy,
+} from "./failure";
+export {
   normalizeSignInIntent,
   signInIntentLabel,
   SIGN_IN_INTENTS,
   type SignInIntent,
 } from "./sign-in-intent";
+export {
+  getLocalPersonaSession,
+  isLocalAuthEnabled,
+  LOCAL_AUTH_COOKIE,
+  LOCAL_AUTH_PERSONAS,
+  normalizeLocalPersona,
+  provisionLocalPersona,
+  serializeLocalPersonaCookie,
+  type LocalAuthPersona,
+  type LocalPersonaId,
+} from "./local";
 export {
   AuthError,
   WORKSPACE_PERMISSIONS,

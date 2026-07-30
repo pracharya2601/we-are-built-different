@@ -1,7 +1,9 @@
 import {
   AuthError,
+  authFailurePath,
   completeAuth0Login,
   getAuthConfig,
+  prefersHtml,
 } from "@/lib/auth";
 import {
   clearCookie,
@@ -47,6 +49,13 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
     if (url.searchParams.has("error") || !code) {
+      // The provider reason is the only signal for a tenant misconfiguration
+      // (for example an AUTH0_AUDIENCE with no matching Auth0 API, which
+      // returns "Service not found"). Log it; never render it.
+      console.error("Auth0 declined the authorization request", {
+        error: url.searchParams.get("error"),
+        errorDescription: url.searchParams.get("error_description"),
+      });
       throw new AuthError(
         "authorization_failed",
         "Auth0 did not authorize the login.",
@@ -84,6 +93,21 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(null, { status: 302, headers });
   } catch (error) {
     const authError = toAuthError(error);
+
+    // A browser arriving from Auth0 gets a rendered page; machine callers keep
+    // the JSON error contract. Either way the transaction cookie is cleared.
+    if (prefersHtml(request.headers.get("accept"))) {
+      const headers = new Headers({
+        "cache-control": "no-store",
+        location: new URL(
+          authFailurePath(authError.code, transaction?.returnTo),
+          url.origin,
+        ).toString(),
+      });
+      headers.append("set-cookie", clearCookie(TRANSACTION_COOKIE));
+      return new Response(null, { status: 302, headers });
+    }
+
     const headers = new Headers({
       "cache-control": "no-store",
       "content-type": "application/json; charset=utf-8",

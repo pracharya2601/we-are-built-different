@@ -79,6 +79,11 @@ Audit membership, billing, entitlement, and configuration changes. For account
 deletion, disable access immediately, then perform retention-aware erasure in a
 background job; never rewrite historical migration files.
 
+Local authentication bypass is intentionally triple-gated by
+`APP_ENV=development`, `LOCAL_AUTH_BYPASS=true`, and the company authentication
+feature flag being off. The local Wrangler vars enable it; staging vars do not.
+Never add `LOCAL_AUTH_BYPASS=true` to staging or production.
+
 Live authentication is tenant-scoped and fail-closed. A valid Auth0 session is
 not sufficient: every protected request rechecks the active local membership
 and workspace status. Suspensions and role changes therefore take effect

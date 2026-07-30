@@ -103,6 +103,6 @@ and cross-workspace denial.
 Verify:
 
 ```bash
-node --test tests/dynamic-billing.test.mjs tests/stripe-config.test.mjs tests/finance-ledger.test.mjs tests/openchair-workflow.test.mjs
+node --test tests/dynamic-billing.test.mjs tests/stripe-config.test.mjs tests/finance-ledger.test.mjs tests/appointment-funding.test.mjs tests/openchair-workflow.test.mjs
 npm run typecheck
 ```

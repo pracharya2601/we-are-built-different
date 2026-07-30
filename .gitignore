@@ -30,7 +30,6 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-!.env.example
 /.dev.vars*
 !/.dev.vars.example
 
@@ -49,3 +48,11 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+.projects/cache
+.projects/vault
+.projects/state.test.json
+.projects/state.local.test.json
+.env
+.env.*
+!.env.example

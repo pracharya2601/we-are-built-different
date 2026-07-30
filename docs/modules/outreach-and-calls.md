@@ -23,8 +23,9 @@ Read `docs/call-automation.md` for the runtime flow and local configuration.
 
 ## OpenChair outreach
 
-Status: types, queue/provider ports, and D1 schema exist; sequencing adapter
-and live command/event handlers are next.
+Status: types, queue/provider ports, D1 schema, and the sequencing adapter
+(`service.ts`, `generic-call-adapter.ts`, `outcome.ts`) exist; the D1-backed run
+and attempt store plus live command/event handlers are next.
 
 `lib/openchair/outreach` owns:
 
@@ -89,7 +90,7 @@ must be canceled or skipped.
 Verify:
 
 ```bash
-node --test tests/call-automation.test.mjs tests/openchair-workflow.test.mjs
+node --test tests/call-automation.test.mjs tests/openchair-outreach.test.mjs tests/openchair-workflow.test.mjs
 npm run typecheck
 npm run build
 ```

@@ -45,6 +45,8 @@
 ## Next: live product page
 
 - Replace fixture projection with a D1-backed projection.
+- Derive data and action grants from the authenticated membership, effective
+  overrides, and appointment relationships.
 - Add role-safe contextual panels and command forms.
 - Add server-sent events or a Durable Object connection.
 - Never use role query parameters or hidden buttons as authorization.

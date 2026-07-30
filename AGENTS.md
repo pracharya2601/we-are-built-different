@@ -64,3 +64,13 @@ Never commit secrets. Keep `.env.example` aligned with runtime configuration;
 use `.env.local` locally and a reviewed secret manager after a host is chosen.
 Do not add ChatGPT/Sites deployment metadata or fake authentication/payment
 fallbacks. Preserve tenant isolation and fail-closed membership checks.
+
+<!-- stripe-projects-cli managed:agents-md:start -->
+## Stripe Projects CLI
+
+This repository is initialized for the Stripe project "built-different-control-plane".
+
+## Tools used
+
+- [Stripe CLI](https://docs.stripe.com/stripe-cli) with the `projects` plugin to manage third-party services, credentials, and deployments for this project. Use the stripe-projects-cli to manage deploying and access to third party services.
+<!-- stripe-projects-cli managed:agents-md:end -->

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type {
+  FrontendDataGrant,
   JourneyStage,
+  OpenChairAction,
   ViewerRole,
   WorkflowProjection,
 } from "@/lib/openchair";
@@ -22,6 +24,7 @@ export function WorkflowPreview({
     style: "currency",
     currency: projection.appointment.currency,
   });
+  const pricing = projection.appointment.pricing;
 
   return (
     <main className="workflow-shell">
@@ -48,18 +51,27 @@ export function WorkflowPreview({
           </p>
         </div>
         <dl>
-          <div>
-            <dt>Care price</dt>
-            <dd>{money.format(projection.appointment.discountedPrice / 100)}</dd>
-          </div>
-          <div>
-            <dt>Sponsor</dt>
-            <dd>{money.format(projection.appointment.sponsorAmount / 100)}</dd>
-          </div>
-          <div>
-            <dt>Patient</dt>
-            <dd>{money.format(projection.appointment.patientAmount / 100)}</dd>
-          </div>
+          {pricing ? (
+            <>
+              <div>
+                <dt>Care price</dt>
+                <dd>{money.format(pricing.discountedPrice / 100)}</dd>
+              </div>
+              <div>
+                <dt>Sponsor</dt>
+                <dd>{money.format(pricing.sponsorAmount / 100)}</dd>
+              </div>
+              <div>
+                <dt>Patient</dt>
+                <dd>{money.format(pricing.patientAmount / 100)}</dd>
+              </div>
+            </>
+          ) : (
+            <div>
+              <dt>Financial details</dt>
+              <dd>Restricted</dd>
+            </div>
+          )}
           <div>
             <dt>Duration</dt>
             <dd>{projection.appointment.durationMinutes} min</dd>
@@ -133,6 +145,18 @@ export function WorkflowPreview({
           ) : (
             <p>No actions are available in this projection.</p>
           )}
+          <p className="kicker workflow-grant-heading">
+            Granted data
+          </p>
+          <ul>
+            {Object.entries(projection.access.data)
+              .filter(([, decision]) => decision.allowed)
+              .map(([grant]) => (
+                <li key={grant}>
+                  <code>{grant}</code>
+                </li>
+              ))}
+          </ul>
           <p className="workflow-note">
             The browser can request an action, but only the backend workflow
             command handler may advance the stage.
@@ -173,60 +197,99 @@ function PanelContent({
           Review the appointment and publish it to begin nonprofit patient
           selection.
         </p>
-        <DisabledAction label="Publish OpenChair Slot" />
+        {actionAllowed(projection, "appointment.publish") ? (
+          <DisabledAction label="Publish OpenChair Slot" />
+        ) : (
+          <AccessDenied />
+        )}
       </>
     );
   }
   if (projection.panelType === "PATIENT_SELECTION") {
+    if (
+      !dataAllowed(projection, "beneficiary.list") &&
+      !dataAllowed(projection, "candidate.order")
+    ) {
+      return <AccessDenied />;
+    }
     return (
       <>
         <p>
           {data.selectedCandidateCount ?? 0} eligible patients are selected for
           ordered outreach.
         </p>
-        <DisabledAction label="Approve Patient Outreach" />
+        {actionAllowed(projection, "candidate.select") ? (
+          <DisabledAction label="Approve Patient Outreach" />
+        ) : (
+          <AccessDenied actionOnly />
+        )}
       </>
     );
   }
   if (projection.panelType === "FUNDING_APPROVAL") {
+    const pricing = projection.appointment.pricing;
+    if (!dataAllowed(projection, "funding.summary") || !pricing) {
+      return <AccessDenied />;
+    }
     return (
       <>
         <PaymentSplit projection={projection} money={money} />
-        <DisabledAction
-          label={`Approve and Fund ${money.format(
-            projection.appointment.sponsorAmount / 100,
-          )}`}
-        />
+        {actionAllowed(projection, "funding.approve") ? (
+          <DisabledAction
+            label={`Approve and Fund ${money.format(
+              pricing.sponsorAmount / 100,
+            )}`}
+          />
+        ) : (
+          <AccessDenied actionOnly />
+        )}
       </>
     );
   }
   if (projection.panelType === "CALLING_PATIENTS") {
+    if (!dataAllowed(projection, "outreach.status")) {
+      return <AccessDenied />;
+    }
     return (
       <>
         <p className="workflow-current-candidate">
           Calling <strong>{data.currentCandidateName ?? "next patient"}</strong>
         </p>
         <OutcomeList outcomes={data.previousOutcomes} />
-        <div className="workflow-action-row">
-          <DisabledAction label="Take over" />
-          <DisabledAction label="Skip" />
-          <DisabledAction label="Stop calling" />
-        </div>
+        {actionAllowed(projection, "outreach.control") ? (
+          <div className="workflow-action-row">
+            <DisabledAction label="Take over" />
+            <DisabledAction label="Skip" />
+            <DisabledAction label="Stop calling" />
+          </div>
+        ) : (
+          <AccessDenied actionOnly />
+        )}
       </>
     );
   }
   if (projection.panelType === "PATIENT_ACCEPTED") {
+    if (!dataAllowed(projection, "accepted-patient.identity")) {
+      return <AccessDenied />;
+    }
     return (
       <>
         <p>
           <strong>{data.acceptedPatientName ?? "A patient"}</strong> accepted.
           Workflow reservation must be confirmed before a payment link is sent.
         </p>
-        <DisabledAction label="Send Payment Link" />
+        {actionAllowed(projection, "payment.link.send") ? (
+          <DisabledAction label="Send Payment Link" />
+        ) : (
+          <AccessDenied actionOnly />
+        )}
       </>
     );
   }
   if (projection.panelType === "PAYMENT") {
+    if (!dataAllowed(projection, "payment.status")) {
+      return <AccessDenied />;
+    }
     return (
       <>
         <PaymentSplit projection={projection} money={money} />
@@ -237,15 +300,33 @@ function PanelContent({
     );
   }
   if (projection.panelType === "CHAIR_FILLED") {
+    const canSeeIdentity = dataAllowed(
+      projection,
+      "accepted-patient.identity",
+    );
+    const canSeePayments = dataAllowed(projection, "payment.status");
+    if (!canSeeIdentity && !canSeePayments) {
+      return <AccessDenied />;
+    }
+    const totalCollected =
+      projection.appointment.pricing?.discountedPrice ??
+      (data.payments
+        ? data.payments.sponsor.amount + data.payments.patient.amount
+        : 0);
     return (
       <>
         <p className="workflow-filled-title">OpenChair Filled</p>
         <p>
-          {data.acceptedPatientName ?? "The accepted patient"} is confirmed.
-          Contributions totaling{" "}
-          {money.format(projection.appointment.discountedPrice / 100)} were
-          collected.
+          {canSeeIdentity
+            ? `${data.acceptedPatientName ?? "The accepted patient"} is confirmed.`
+            : "An approved patient is confirmed; identity is restricted."}{" "}
+          {canSeePayments && totalCollected > 0
+            ? `Contributions totaling ${money.format(totalCollected / 100)} were collected.`
+            : null}
         </p>
+        {canSeePayments ? (
+          <PaymentSplit projection={projection} money={money} />
+        ) : null}
         <OutcomeList outcomes={data.previousOutcomes} />
       </>
     );
@@ -259,6 +340,16 @@ function PanelContent({
         Terminal recovery requires an audited backend decision.
       </p>
     </>
+  );
+}
+
+function AccessDenied({ actionOnly = false }: { actionOnly?: boolean }) {
+  return (
+    <p className="workflow-access-denied">
+      {actionOnly
+        ? "Your effective permissions do not allow this action."
+        : "This information is not included in your authorized projection."}
+    </p>
   );
 }
 
@@ -315,6 +406,20 @@ function DisabledAction({ label }: { label: string }) {
       {label} · handler next
     </button>
   );
+}
+
+function actionAllowed(
+  projection: WorkflowProjection,
+  action: OpenChairAction,
+): boolean {
+  return projection.access.actions[action].allowed;
+}
+
+function dataAllowed(
+  projection: WorkflowProjection,
+  grant: FrontendDataGrant,
+): boolean {
+  return projection.access.data[grant].allowed;
 }
 
 function panelHeading(panelType: JourneyStage | "TERMINAL"): string {

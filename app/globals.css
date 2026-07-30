@@ -417,14 +417,23 @@ textarea {
   margin-top: 48px;
 }
 
+.role-select-grid > form {
+  display: flex;
+}
+
 .role-choice-card {
   display: flex;
+  width: 100%;
   min-height: 390px;
   flex-direction: column;
   padding: 26px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(255, 254, 249, 0.9);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -2024,6 +2033,20 @@ textarea {
   color: var(--muted);
   font-size: 0.76rem;
   line-height: 1.55;
+}
+
+.workflow-access-denied {
+  margin-top: 28px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  background: rgba(246, 241, 231, 0.5);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.workflow-grant-heading {
+  margin-top: 30px;
 }
 
 .workflow-role-switcher {

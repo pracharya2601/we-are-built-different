@@ -8,6 +8,11 @@ import {
 import { effectivePermissions } from "./authorization";
 import { getAuthConfig } from "./config";
 import { readCookie, SESSION_COOKIE } from "./cookies";
+import {
+  getLocalPersonaSession,
+  isLocalAuthEnabled,
+  LOCAL_AUTH_COOKIE,
+} from "./local";
 import { decodeSession } from "./session";
 import {
   AuthError,
@@ -68,12 +73,19 @@ export async function requireWorkspacePermission(
 
 export async function getAuthMode(request?: Request): Promise<AuthMode> {
   const session = await getAuthSession(request);
-  return session?.mode ?? getAuthConfig(request?.url).mode;
+  if (session) return session.mode;
+  return isLocalAuthEnabled() ? "local" : getAuthConfig(request?.url).mode;
 }
 
 export async function getAuthSession(
   request?: Request,
 ): Promise<AuthSession | null> {
+  if (isLocalAuthEnabled()) {
+    const personaId = request
+      ? readCookie(request.headers.get("cookie"), LOCAL_AUTH_COOKIE)
+      : (await cookies()).get(LOCAL_AUTH_COOKIE)?.value ?? null;
+    return personaId ? getLocalPersonaSession(personaId) : null;
+  }
   const cookieValue = request
     ? readCookie(request.headers.get("cookie"), SESSION_COOKIE)
     : (await cookies()).get(SESSION_COOKIE)?.value ?? null;

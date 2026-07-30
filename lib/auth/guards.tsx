@@ -13,6 +13,7 @@ import {
   authSetupPath,
   getAuthConfigurationStatus,
 } from "./config";
+import { isLocalAuthEnabled } from "./local";
 import { safeReturnTo } from "./flow";
 import {
   AuthError,
@@ -38,7 +39,7 @@ export async function AuthGuard({
 }) {
   const safeDestination = safeReturnTo(returnTo);
   const status = getAuthConfigurationStatus();
-  if (!status.configured) {
+  if (!isLocalAuthEnabled() && !status.configured) {
     redirect(authSetupPath(safeDestination));
   }
 

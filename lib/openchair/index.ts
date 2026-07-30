@@ -1,4 +1,5 @@
 export * from "./appointments/index.ts";
+export * from "./authorization/index.ts";
 export * from "./beneficiaries/index.ts";
 export * from "./contracts/index.ts";
 export * from "./fixtures/index.ts";

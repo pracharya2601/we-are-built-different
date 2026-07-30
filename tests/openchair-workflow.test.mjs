@@ -4,7 +4,13 @@ import test from "node:test";
 
 import { beneficiaryCanBeSelected } from "../lib/openchair/beneficiaries/eligibility.ts";
 import {
-  allowedActionsFor,
+  authorizeWorkflowFrontend,
+} from "../lib/openchair/authorization/frontend-access.ts";
+import {
+  buildFixtureFrontendAccess,
+  filterProjectionForFrontend,
+} from "../lib/openchair/projections/access-policy.ts";
+import {
   buildStagePresentations,
 } from "../lib/openchair/projections/workflow-view.ts";
 import {
@@ -189,23 +195,70 @@ test("beneficiary eligibility requires verification, availability, and consent",
   );
 });
 
-test("role-safe projections expose only stage-appropriate actions", () => {
-  assert.deepEqual(
-    allowedActionsFor("sponsor", "FUNDING_APPROVAL"),
-    ["appointment.read", "funding.read", "funding.approve"],
+test("granular projections deny data and actions before serialization", () => {
+  const sponsorAccess = buildFixtureFrontendAccess(
+    "sponsor",
+    "PATIENT_ACCEPTED",
   );
+  assert.equal(sponsorAccess.data["funding.summary"].allowed, true);
   assert.equal(
-    allowedActionsFor("clinic", "FUNDING_APPROVAL").includes(
-      "funding.approve",
-    ),
+    sponsorAccess.data["accepted-patient.identity"].allowed,
     false,
   );
-  assert.equal(
-    allowedActionsFor("operator", "CALLING_PATIENTS").includes(
-      "outreach.control",
-    ),
-    true,
+  assert.equal(sponsorAccess.actions["funding.approve"].allowed, false);
+  assert.equal(sponsorAccess.actions["payment.link.send"].allowed, false);
+
+  const operatorAccess = buildFixtureFrontendAccess(
+    "operator",
+    "CALLING_PATIENTS",
   );
+  assert.equal(operatorAccess.data["outreach.transcript"].allowed, true);
+  assert.equal(operatorAccess.actions["outreach.control"].allowed, true);
+  assert.equal(operatorAccess.actions["appointment.cancel"].allowed, false);
+
+  const filtered = filterProjectionForFrontend({
+    appointment: {
+      appointmentId: APPOINTMENT_ID,
+      clinicName: "Fixture Clinic",
+      startsAt: "2026-07-30T15:00:00.000Z",
+      durationMinutes: 60,
+      treatmentType: "General visit",
+      currency: "USD",
+      pricing: {
+        fullPrice: 12000,
+        discountedPrice: 8000,
+        sponsorAmount: 6000,
+        patientAmount: 2000,
+      },
+      expiresAt: "2026-07-30T14:00:00.000Z",
+    },
+    activeStage: "PATIENT_ACCEPTED",
+    stages: buildStagePresentations("PATIENT_ACCEPTED"),
+    viewerRole: "sponsor",
+    panelType: "PATIENT_ACCEPTED",
+    panelData: {
+      selectedCandidateCount: 3,
+      currentCandidateName: "Ahmed",
+      acceptedCandidateId: AHMED_CANDIDATE_ID,
+      acceptedPatientName: "Ahmed",
+      previousOutcomes: [
+        { displayName: "Maria", outcome: "No answer" },
+      ],
+      payments: {
+        sponsor: { amount: 6000, status: "paid" },
+        patient: { amount: 2000, status: "waiting" },
+      },
+    },
+    access: sponsorAccess,
+    allowedActions: [],
+    workflowVersion: 5,
+    lastUpdatedAt: "2026-07-30T13:00:00.000Z",
+  });
+  assert.equal(filtered.panelData.acceptedCandidateId, undefined);
+  assert.equal(filtered.panelData.acceptedPatientName, undefined);
+  assert.equal(filtered.panelData.currentCandidateName, undefined);
+  assert.equal(filtered.panelData.previousOutcomes, undefined);
+  assert.equal(filtered.panelData.payments?.sponsor.status, "paid");
 
   const failed = buildStagePresentations("FAILED", "CALLING_PATIENTS");
   assert.equal(
@@ -215,6 +268,67 @@ test("role-safe projections expose only stage-appropriate actions", () => {
   assert.equal(
     failed.find((item) => item.stage === "PAYMENT")?.status,
     "future",
+  );
+});
+
+test("effective permissions still require appointment relationships and disclosure stage", () => {
+  const clinicBeforeConfirmation = authorizeWorkflowFrontend(
+    {
+      subjectId: "usr_clinic",
+      workspaceId: WORKSPACE_ID,
+      permissions: [
+        "appointment.read",
+        "appointment.cancel",
+        "funding.approve",
+        "outreach.control",
+      ],
+      relationships: {
+        clinic: true,
+        nonprofit: false,
+        sponsor: false,
+        operator: false,
+      },
+    },
+    "PAYMENT",
+  );
+  assert.equal(
+    clinicBeforeConfirmation.actions["appointment.cancel"].allowed,
+    true,
+  );
+  assert.equal(
+    clinicBeforeConfirmation.actions["funding.approve"].allowed,
+    false,
+  );
+  assert.equal(
+    clinicBeforeConfirmation.actions["outreach.control"].allowed,
+    false,
+  );
+  assert.deepEqual(
+    clinicBeforeConfirmation.data["accepted-patient.identity"],
+    { allowed: false, reason: "disclosure_not_reached" },
+  );
+
+  const clinicAfterConfirmation = authorizeWorkflowFrontend(
+    {
+      subjectId: "usr_clinic",
+      workspaceId: WORKSPACE_ID,
+      permissions: ["appointment.read"],
+      relationships: {
+        clinic: true,
+        nonprofit: false,
+        sponsor: false,
+        operator: false,
+      },
+    },
+    "CHAIR_FILLED",
+  );
+  assert.equal(
+    clinicAfterConfirmation.data["accepted-patient.identity"].allowed,
+    true,
+  );
+  assert.equal(
+    clinicAfterConfirmation.data["accepted-patient.contact"].allowed,
+    true,
   );
 });
 
@@ -255,7 +369,8 @@ test("fixture catalog, D1 migration, UI, and architecture docs stay aligned", as
   assert.match(openChairMigration, /openchair_outreach_attempts/);
   assert.match(openChairMigration, /workspace_id/);
 
-  const [page, preview, architecture, workflow] = await Promise.all([
+  const [page, preview, architecture, workflow, frontendAccess] =
+    await Promise.all([
     readFile(
       new URL(
         "../app/appointments/[appointmentId]/page.tsx",
@@ -278,13 +393,20 @@ test("fixture catalog, D1 migration, UI, and architecture docs stay aligned", as
       new URL("../docs/openchair/workflow-contract.md", import.meta.url),
       "utf8",
     ),
+    readFile(
+      new URL("../docs/openchair/frontend-access.md", import.meta.url),
+      "utf8",
+    ),
   ]);
   assert.match(page, /<AuthGuard/);
   assert.match(preview, /actions do not contact Stripe or Vapi/i);
+  assert.match(preview, /projection\.access\.actions/);
   assert.match(architecture, /modular monolith/i);
   assert.match(architecture, /workspaceId/);
   assert.match(workflow, /funding\.patient_checkout_created/);
   assert.match(workflow, /must not say the clinic received funds/i);
+  assert.match(frontendAccess, /server-side projection filtering/i);
+  assert.match(frontendAccess, /Role query parameters must not exist/i);
 });
 
 function callingState() {

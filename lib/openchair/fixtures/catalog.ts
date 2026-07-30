@@ -19,8 +19,9 @@ import {
   type WorkflowStage,
 } from "../contracts/index.ts";
 import {
-  allowedActionsFor,
+  buildFixtureFrontendAccess,
   buildStagePresentations,
+  filterProjectionForFrontend,
 } from "../projections/index.ts";
 
 type Scenario = {
@@ -73,13 +74,17 @@ export function buildWorkflowFixture(
   viewerRole: ViewerRole = "operator",
 ): WorkflowProjection {
   const scenario = parseScenario(FIXTURES[name]);
+  const access = buildFixtureFrontendAccess(
+    viewerRole,
+    scenario.activeStage,
+  );
   const panelType = WORKFLOW_STAGES.includes(scenario.activeStage)
     ? JOURNEY_STAGES.includes(scenario.activeStage as JourneyStage)
       ? (scenario.activeStage as JourneyStage)
       : "TERMINAL"
     : "TERMINAL";
 
-  return {
+  return filterProjectionForFrontend({
     appointment: {
       appointmentId: "appt_11111111111111111111111111111111",
       clinicName: "OpenChair Dental Clinic",
@@ -87,10 +92,12 @@ export function buildWorkflowFixture(
       durationMinutes: 60,
       treatmentType: "General dental visit",
       currency: "USD",
-      fullPrice: 12000,
-      discountedPrice: 8000,
-      sponsorAmount: 6000,
-      patientAmount: 2000,
+      pricing: {
+        fullPrice: 12000,
+        discountedPrice: 8000,
+        sponsorAmount: 6000,
+        patientAmount: 2000,
+      },
       expiresAt: "2026-07-30T14:15:00-07:00",
     },
     activeStage: scenario.activeStage,
@@ -112,14 +119,15 @@ export function buildWorkflowFixture(
       },
       blockedReason: scenario.blockedReason,
     },
-    allowedActions: allowedActionsFor(viewerRole, scenario.activeStage),
+    access,
+    allowedActions: [],
     workflowVersion: scenario.workflowVersion,
     lastUpdatedAt: "2026-07-30T13:05:00-07:00",
     fixture: {
       name: scenario.name,
       description: scenario.description,
     },
-  };
+  });
 }
 
 function parseScenario(value: unknown): Scenario {

@@ -11,6 +11,7 @@ export const OPENCHAIR_ACTIONS = [
   "funding.read",
   "funding.approve",
   "funding.pay",
+  "payment.link.send",
   "outreach.start",
   "outreach.monitor",
   "outreach.control",

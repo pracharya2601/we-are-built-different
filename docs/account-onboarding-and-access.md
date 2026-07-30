@@ -69,6 +69,36 @@ jobs, and storage paths. Token assertions are useful for diagnostics and
 initial organization provisioning, but they do not replace tenant-scoped D1
 membership checks.
 
-`AUTH0_AUDIENCE` is mandatory. It must be the exact identifier of the Auth0 API
-that issues the core-product access token; the application fails closed at the
-authentication setup screen when this value is absent.
+`AUTH0_AUDIENCE` is optional. It enables token assertions; it does not gate
+sign-in.
+
+- **Unset** — sign-in uses the ID token alone. `tokenRoles` and
+  `tokenPermissions` are empty; `/api/v1/me` still returns the authoritative
+  local roles and effective permissions.
+- **Set** — login also requests an API access token, verifies it against the
+  tenant JWKS, checks that its subject and `org_id` match the ID token, and
+  records its roles and permissions as assertions.
+
+This is safe to leave unset because it never widens access. Effective
+permissions come from `permissionsForRoles(resolved.roles)`, where the roles
+are the ones the identity adapter read from D1 membership. Token assertions are
+diagnostic and seed initial organization provisioning; they never authorize.
+
+When you do set it, the value must be the identifier of an API that **already
+exists** in the tenant. Create it under Auth0 Dashboard -> Applications -> APIs
+-> Create API with signing algorithm RS256, and use its identifier verbatim. A
+present-but-unregistered audience fails every login at `/authorize` with
+`access_denied - Service not found: <identifier>`, before the login form is
+shown; the reason appears only in the server log, because the callback route
+never renders provider-supplied text. Verify with:
+
+```bash
+curl -s -o /dev/null -w '%{redirect_url}\n' "$(
+  curl -s -i 'http://localhost:3000/api/auth/login?returnTo=/dashboard' \
+    | sed -n 's/^[Ll]ocation: //p' | tr -d '\r'
+)"
+```
+
+A correctly registered audience redirects to the tenant's `/u/login`, as does an
+unset one. A set-but-unregistered audience redirects back to
+`/api/auth/callback` with `error=access_denied`.

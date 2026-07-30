@@ -20,8 +20,10 @@ experience is developed separately.
 - private, workspace-scoped Cloudflare R2 image uploads
 - verified upload completion with durable file-metadata delivery
 - owner-only, encrypted, queue-backed Vapi call automation
-- OpenChair appointment, workflow, beneficiary, funding, outreach, and
-  projection contracts with deterministic fixture previews
+- OpenChair appointment, workflow, beneficiary, outreach, and projection
+  contracts with deterministic fixture previews
+- appointment funding: approval, sponsor/patient Checkout, refunds, and a
+  separately signed Stripe webhook, kept apart from SaaS subscriptions
 - D1/Drizzle records for identity, membership, billing, entitlements, and events
 - a product-facing `platform_access` entitlement
 - a validated pricing router for catalog or dynamic monthly Checkout amounts
@@ -35,7 +37,13 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Open `http://localhost:3000`. Auth0 is required for authenticated screens.
+Open `http://localhost:3000`. The committed local Wrangler environment enables
+the explicit three-user development chooser when
+`features.authentication=false`. The chooser provisions separate service
+provider, platform-owner, and beneficiary identities in local D1; authorization
+and tenant membership checks still run on every protected request. Staging does
+not inherit `LOCAL_AUTH_BYPASS` and continues to require Auth0.
+
 Stripe-backed billing and Vapi-backed calls fail closed until their complete
 local configuration is present. Tests never create fake provider results or
 contact live providers.
@@ -89,9 +97,13 @@ npm run db:generate
 ## Provider configuration
 
 Configure the OpenChair Auth0 application’s callback and logout URLs from
-`AUTH0_APP_BASE_URL`. `AUTH0_AUDIENCE` is also required and must match the
-registered Auth0 API audience so the access token can carry verified roles and
-permissions for the multi-tenant core-product contract.
+`AUTH0_APP_BASE_URL`. `AUTH0_AUDIENCE` is optional: leave it unset to sign in
+with the ID token alone, or set it to the identifier of an API that already
+exists in the tenant so the access token can carry verified roles and
+permissions as assertions. Either way, authorization comes from D1 membership
+roles, never from token claims. See
+[account onboarding and access](docs/account-onboarding-and-access.md) for the
+setup and the verification command.
 
 Configure allowlisted Stripe Price IDs through environment variables; never
 accept a Price ID from the browser. During localhost development, run the

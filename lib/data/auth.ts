@@ -23,6 +23,7 @@ export type ResolveIdentityInput = {
   subject: string;
   email: string | null;
   emailVerified: boolean;
+  displayName?: string | null;
   organizationId: string | null;
   assertedRoles: string[];
   signInIntent: SignInIntent | null;
@@ -110,6 +111,7 @@ export function createDataAuthStore(db: AppDatabase) {
         subject: input.subject,
         email: input.email,
         emailVerified: input.emailVerified,
+        displayName: input.displayName,
       });
       await bootstrapPlatformOwner(db, {
         userId: identity.userId,

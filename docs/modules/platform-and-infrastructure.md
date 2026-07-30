@@ -76,15 +76,9 @@ placeholders only.
 
 ## Contributor verification
 
-For binding, schema, queue, event, or storage changes, run the full suite:
-
-```bash
-npm run db:migrate:local
-npm run typecheck
-npm run lint
-npm test
-npm run build
-```
+For binding, schema, queue, event, or storage changes, run `npm run
+db:migrate:local` first, then the full suite in
+[required checks](../../CONTRIBUTING.md#required-checks).
 
 Document new bindings, resource names, secret ownership, retry behavior,
 idempotency rules, and staging prerequisites in the same pull request.

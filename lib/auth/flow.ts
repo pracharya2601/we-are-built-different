@@ -107,6 +107,11 @@ export async function completeAuth0Login(
     );
   }
 
+  // Token assertions require an API audience. Without one, Auth0 issues no
+  // verifiable API access token, so these stay empty and the ID token alone
+  // identifies the user. Authorization is unaffected either way: the roles
+  // below are overwritten by the identity adapter's D1 membership lookup, and
+  // `permissions` is derived from those, never from the token.
   let permissions: string[] = [];
   let accessTokenRoles = [] as ReturnType<typeof parseWorkspaceRoles>;
   if (config.audience && !tokenSet.accessToken) {

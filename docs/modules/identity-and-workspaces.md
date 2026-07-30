@@ -6,6 +6,19 @@ Live. Auth0-compatible OIDC, encrypted sessions, account onboarding,
 workspace membership, role/permission checks, switching, and immediate
 suspension are implemented.
 
+Local development can use the explicit three-persona identity provider when
+all of these conditions are true:
+
+- `APP_ENV=development`;
+- `LOCAL_AUTH_BYPASS=true`;
+- `features.authentication=false` in `config/company.json`.
+
+The chooser provisions real local D1 users, workspaces, and memberships for a
+service provider, platform owner, and beneficiary. It bypasses only external
+identity verification. Membership, effective-permission, tenant, entitlement,
+and platform-operator checks remain active. The staging Wrangler environment
+does not define `LOCAL_AUTH_BYPASS`, so it remains fail-closed on Auth0.
+
 ## Owns
 
 - Auth0/OIDC configuration and callback flow.
@@ -21,11 +34,13 @@ roles, or provider payment/call outcomes.
 ## Code map
 
 - `lib/auth`: OIDC, cookies, sessions, guards, authorization policy.
+- `lib/auth/local.ts`: localhost-only persona provisioning and selection.
 - `lib/accounts`: account types and plan policy.
 - `lib/data/auth.ts`, `users.ts`, `workspaces.ts`, `permissions.ts`: D1
   identity and membership operations.
 - `lib/data/platform-operators.ts`: durable platform-owner records.
 - `app/api/auth`: login, callback, session, logout.
+- `app/auth/select-role`: the local three-user chooser.
 - `app/api/v1/me`: active principal contract.
 - `app/api/v1/workspaces`: workspace and member APIs.
 - `app/dashboard/workspaces`, `app/dashboard/settings`: management UI.

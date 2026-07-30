@@ -8,6 +8,7 @@ deployed services.
 ## Documents
 
 - [Architecture](architecture.md)
+- [Granular frontend access](frontend-access.md)
 - [Workflow contract](workflow-contract.md)
 - [Implementation plan](implementation-plan.md)
 - [Contributor module index](../modules/README.md)

@@ -3,7 +3,17 @@ export type AuthConfig = {
   issuer: string;
   clientId: string;
   clientSecret: string;
-  audience: string;
+  /**
+   * Optional. When set, login additionally requests an API access token and
+   * records its verified roles/permissions as token assertions. The identifier
+   * must name an API that exists in the tenant, or Auth0 rejects every
+   * authorization request with "Service not found".
+   *
+   * When absent, sign-in uses the ID token alone and token assertions stay
+   * empty. This does not widen access: authorization is decided by D1
+   * membership roles in every case (see completeAuth0Login).
+   */
+  audience: string | null;
   appBaseUrl: string;
   sessionSecret: string;
   rolesClaim: string;
@@ -16,13 +26,15 @@ const REQUIRED_AUTH0_ENV = [
   "AUTH0_CLIENT_SECRET",
   "AUTH0_APP_BASE_URL",
   "AUTH0_SESSION_SECRET",
-  "AUTH0_AUDIENCE",
 ] as const;
 
 export class AuthConfigurationError extends Error {
-  constructor(readonly missing: readonly string[]) {
+  readonly missing: readonly string[];
+
+  constructor(missing: readonly string[]) {
     super(`Auth0 configuration is required. Missing: ${missing.join(", ")}.`);
     this.name = "AuthConfigurationError";
+    this.missing = missing;
   }
 }
 
@@ -65,8 +77,7 @@ export function getAuthConfig(_requestUrl?: string): AuthConfig {
     !clientId ||
     !clientSecret ||
     !appBaseUrl ||
-    !sessionSecret ||
-    !audience
+    !sessionSecret
   ) {
     throw new AuthConfigurationError(missing);
   }
@@ -93,7 +104,6 @@ export function isAuth0Configured(): boolean {
       env("AUTH0_CLIENT_ID") &&
       env("AUTH0_CLIENT_SECRET") &&
       env("AUTH0_APP_BASE_URL") &&
-      env("AUTH0_AUDIENCE") &&
       (env("AUTH0_SESSION_SECRET")?.length ?? 0) >= 32,
   );
 }

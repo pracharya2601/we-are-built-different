@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "project": {
+    "initializedAt": "2026-07-30T20:16:07.701Z",
+    "merchantDisplayName": "wearebuilddifferenaccount",
+    "merchantId": "acct_1TymLcPnnBu8s2qd",
+    "projectId": "project_61V8OKVbufWzyDtJv16V8AIx4ESQ355FeeDbjbUhEDJI",
+    "projectName": "built-different-control-plane"
+  },
+  "providers": {
+    "auth0": {
+      "accountRequestId": "facctrq_61V8OPuOG6Jt34Met16V8AIx4ESQ355FeeDbjbUhE7cm",
+      "configuration": {
+        "locality": "us",
+        "naming_prefix": "built-different"
+      },
+      "linkedAt": "2026-07-30T20:21:48.010Z",
+      "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",
+      "providerName": "Auth0",
+      "redirectUrl": null,
+      "requestedAt": "2026-07-30T20:21:48.010Z",
+      "status": "complete"
+    }
+  },
+  "resources": {
+    "auth0-client": {
+      "configuration": {
+        "name": "BuiltDifferent",
+        "description": "BuiltDifferent local server-rendered control plane",
+        "app_type": "regular_web",
+        "callbacks": [
+          "http://localhost:3000/api/auth/callback"
+        ],
+        "allowed_logout_urls": [
+          "http://localhost:3000"
+        ],
+        "web_origins": [
+          "http://localhost:3000"
+        ],
+        "grant_types": [
+          "authorization_code"
+        ],
+        "token_endpoint_auth_method": "client_secret_post",
+        "is_first_party": true,
+        "oidc_conformant": true,
+        "cross_origin_authentication": false
+      },
+      "createdAt": "2026-07-30T20:22:03.707Z",
+      "lastRevealedAt": "2026-07-30T20:28:22.321Z",
+      "lastStatus": "complete",
+      "name": "auth0-client",
+      "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",
+      "providerName": "Auth0",
+      "resourceId": "fres_61V8OQChmcbO6Em5F16V8AIx4ESQ355FeeDbjbUhEBJQ",
+      "serviceId": "client"
+    },
+    "auth0-plan": {
+      "configuration": {},
+      "createdAt": "2026-07-30T20:21:51.341Z",
+      "lastRevealedAt": "2026-07-30T20:21:51.479Z",
+      "lastStatus": "complete",
+      "name": "auth0-plan",
+      "providerId": "prvdr_61UVctyxfLOj4FpVw5Bmi",
+      "providerName": "Auth0",
+      "resourceId": "fres_61V8OQ0UaF9JEsVXX16V8AIx4ESQ355FeeDbjbUhEQBs",
+      "serviceId": "free"
+    }
+  },
+  "managedProjectVariableEnvKeys": {
+    ".env.local": [
+      "AUTH0_APP_BASE_URL",
+      "AUTH0_SESSION_SECRET"
+    ]
+  },
+  "activeEnvironment": "development"
+}

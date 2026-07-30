@@ -2,11 +2,12 @@ import {
   getAuthConfigurationStatus,
   getAuthContext,
   getAuthMode,
+  isLocalAuthEnabled,
 } from "@/lib/auth";
 
 export async function GET(request: Request): Promise<Response> {
   const status = getAuthConfigurationStatus();
-  if (!status.configured) {
+  if (!isLocalAuthEnabled() && !status.configured) {
     return Response.json(
       {
         authenticated: false,

@@ -1,4 +1,5 @@
 import type { AppointmentId, CandidateId } from "./identifiers.ts";
+import type { WorkflowFrontendAccess } from "./access.ts";
 import type { OpenChairAction, ViewerRole } from "./permissions.ts";
 import type {
   JourneyStage,
@@ -13,10 +14,12 @@ export type AppointmentSummary = {
   durationMinutes: number;
   treatmentType: string;
   currency: string;
-  fullPrice: number;
-  discountedPrice: number;
-  sponsorAmount: number;
-  patientAmount: number;
+  pricing: {
+    fullPrice: number;
+    discountedPrice: number;
+    sponsorAmount: number;
+    patientAmount: number;
+  } | null;
   expiresAt: string;
 };
 
@@ -57,6 +60,7 @@ export type WorkflowProjection = {
   viewerRole: ViewerRole;
   panelType: JourneyStage | "TERMINAL";
   panelData: WorkflowPanelData;
+  access: WorkflowFrontendAccess;
   allowedActions: OpenChairAction[];
   workflowVersion: number;
   lastUpdatedAt: string;
