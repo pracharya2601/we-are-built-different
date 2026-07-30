@@ -34,7 +34,7 @@ export default function ArchitecturePage() {
         </Link>
         <Link
           className="button button-quiet"
-          href="/auth/select-role?returnTo=/dashboard"
+          href="/api/auth/login?returnTo=/dashboard"
         >
           Sign in
         </Link>

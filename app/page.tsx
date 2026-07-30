@@ -20,7 +20,7 @@ const flow = [
   },
 ];
 
-const signInHref = "/auth/select-role?returnTo=/dashboard";
+const signInHref = "/api/auth/login?returnTo=/dashboard";
 
 export default function Home() {
   return (

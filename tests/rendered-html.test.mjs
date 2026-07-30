@@ -12,7 +12,7 @@ test("landing route presents the OpenChair care-capacity model", async () => {
   assert.match(page, /Sponsor-backed care credits/i);
   assert.match(page, /Private patient claims/i);
   assert.match(page, /starting with\s+dental/i);
-  assert.match(page, /\/auth\/select-role\?returnTo=\/dashboard/);
+  assert.match(page, /\/api\/auth\/login\?returnTo=\/dashboard/);
 });
 
 test("landing source exposes navigation without embedding credentials", async () => {
@@ -22,7 +22,7 @@ test("landing source exposes navigation without embedding credentials", async ()
   ]);
 
   assert.match(page, /nidcr\.nih\.gov/);
-  assert.match(page, /\/auth\/select-role\?returnTo=\/dashboard/);
+  assert.match(page, /\/api\/auth\/login\?returnTo=\/dashboard/);
   assert.match(layout, /companyConfig\.application\.name/);
   assert.match(layout, /\/og-openchair\.png/);
   assert.doesNotMatch(
@@ -31,21 +31,15 @@ test("landing source exposes navigation without embedding credentials", async ()
   );
 });
 
-test("sign-in starts with a non-authorizing OpenChair role selector", async () => {
-  const [selector, login, flow] = await Promise.all([
-    readFile(
-      new URL("../app/auth/select-role/page.tsx", import.meta.url),
-      "utf8",
-    ),
+test("sign-in starts Auth0 directly without an intermediate role page", async () => {
+  const [page, login, flow] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/auth/flow.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(selector, /Service provider/);
-  assert.match(selector, /Nonprofit or sponsor/);
-  assert.match(selector, /Beneficiary/);
-  assert.match(selector, /workspace policy/i);
-  assert.match(selector, /force: "1"/);
+  assert.match(page, /\/api\/auth\/login\?returnTo=\/dashboard/);
+  assert.doesNotMatch(page, /\/auth\/select-role/);
   assert.match(login, /normalizeSignInIntent/);
   assert.match(flow, /signInIntent/);
 });
