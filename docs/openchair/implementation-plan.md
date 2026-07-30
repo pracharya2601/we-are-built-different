@@ -32,13 +32,15 @@
 - Confirm both payments only through verified webhooks.
 - Add refund and balanced appointment-ledger behavior.
 
-## Next: outreach integration
+## Outreach integration bridge
 
-- Map an approved candidate to one encrypted generic call job.
-- Send only one candidate at a time.
-- Translate generic Vapi outcomes into OpenChair outreach facts.
-- Wait for Workflow reservation before stopping remaining candidates.
-- Add dead-letter and operator-review behavior.
+- [x] Map an approved candidate to one encrypted generic call job.
+- [x] Send only one candidate at a time.
+- [x] Translate generic Vapi outcomes into OpenChair outreach facts.
+- [x] Wait for Workflow reservation before stopping remaining candidates.
+- [x] Add dead-letter and operator-recovery orchestration.
+- [ ] Compose the bridge with the live D1 workflow command repository once the
+  persistence-and-commands checkpoint above is complete.
 
 ## Next: live product page
 

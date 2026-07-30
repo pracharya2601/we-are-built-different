@@ -1404,6 +1404,98 @@ export const openchairPayments = sqliteTable(
   ],
 );
 
+export const openchairPaymentAttempts = sqliteTable(
+  "openchair_payment_attempts",
+  {
+    id: text("id").primaryKey(),
+    paymentId: text("payment_id")
+      .notNull()
+      .references(() => openchairPayments.id, { onDelete: "restrict" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "restrict" }),
+    providerCheckoutSessionId: text("provider_checkout_session_id"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: text("status", {
+      enum: ["CREATING", "OPEN", "COMPLETED", "FAILED", "EXPIRED"],
+    })
+      .notNull()
+      .default("CREATING"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("openchair_payment_attempts_idempotency_uidx").on(
+      table.workspaceId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex("openchair_payment_attempts_checkout_uidx").on(
+      table.providerCheckoutSessionId,
+    ),
+    check(
+      "openchair_payment_attempts_status_check",
+      sql`${table.status} in ('CREATING', 'OPEN', 'COMPLETED', 'FAILED', 'EXPIRED')`,
+    ),
+    index("openchair_payment_attempts_payment_idx").on(
+      table.paymentId,
+      table.createdAt,
+    ),
+  ],
+);
+
+/**
+ * Appointment-funding cash journal. Rows are append-only: refunds are new
+ * entries and no application repository exposes update/delete operations.
+ */
+export const openchairFundingLedgerEntries = sqliteTable(
+  "openchair_funding_ledger_entries",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "restrict" }),
+    appointmentId: text("appointment_id")
+      .notNull()
+      .references(() => openchairAppointments.id, { onDelete: "restrict" }),
+    paymentId: text("payment_id")
+      .notNull()
+      .references(() => openchairPayments.id, { onDelete: "restrict" }),
+    entryType: text("entry_type", {
+      enum: ["PAYMENT_RECEIVED", "REFUND_ISSUED"],
+    }).notNull(),
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull(),
+    providerEventId: text("provider_event_id").notNull(),
+    providerPaymentId: text("provider_payment_id"),
+    providerRefundId: text("provider_refund_id"),
+    occurredAt: integer("occurred_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("openchair_funding_ledger_provider_event_uidx").on(
+      table.providerEventId,
+    ),
+    check(
+      "openchair_funding_ledger_entry_type_check",
+      sql`${table.entryType} in ('PAYMENT_RECEIVED', 'REFUND_ISSUED')`,
+    ),
+    check(
+      "openchair_funding_ledger_amount_check",
+      sql`${table.amount} > 0`,
+    ),
+    check(
+      "openchair_funding_ledger_currency_check",
+      sql`length(${table.currency}) = 3`,
+    ),
+    index("openchair_funding_ledger_appointment_idx").on(
+      table.workspaceId,
+      table.appointmentId,
+      table.occurredAt,
+    ),
+  ],
+);
+
 export const openchairOutreachRuns = sqliteTable(
   "openchair_outreach_runs",
   {
@@ -1622,6 +1714,10 @@ export type OpenChairCandidate = typeof openchairCandidates.$inferSelect;
 export type OpenChairFundingRequest =
   typeof openchairFundingRequests.$inferSelect;
 export type OpenChairPayment = typeof openchairPayments.$inferSelect;
+export type OpenChairPaymentAttempt =
+  typeof openchairPaymentAttempts.$inferSelect;
+export type OpenChairFundingLedgerEntry =
+  typeof openchairFundingLedgerEntries.$inferSelect;
 export type OpenChairOutreachRun = typeof openchairOutreachRuns.$inferSelect;
 export type OpenChairOutreachAttempt =
   typeof openchairOutreachAttempts.$inferSelect;

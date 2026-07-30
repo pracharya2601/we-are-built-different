@@ -19,7 +19,8 @@
     "db:migrate:staging": "WRANGLER_LOG_PATH=.wrangler/wrangler.log wrangler d1 migrations apply built-different-staging --remote --env staging",
     "deploy:staging:dry-run": "CLOUDFLARE_ENV=staging WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext deploy --env staging --dry-run",
     "deploy:staging": "CLOUDFLARE_ENV=staging WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext deploy --env staging",
-    "stripe:listen": "stripe listen --events customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed --forward-to localhost:3000/api/webhooks/stripe"
+    "stripe:listen": "stripe listen --events customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed --forward-to localhost:3000/api/webhooks/stripe",
+    "stripe:listen:appointments": "stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.payment_failed,charge.refunded --forward-to localhost:3000/api/webhooks/stripe/appointment-funding"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

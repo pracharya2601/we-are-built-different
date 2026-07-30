@@ -26,8 +26,7 @@ See `docs/funds-and-participants.md`.
 
 ## 3. OpenChair appointment funding
 
-Status: contracts and D1 schema exist; live checkout handlers and provider
-event projection are next.
+Status: MVP Checkout handlers and verified provider-event projection are live.
 
 `lib/openchair/funding` owns:
 
@@ -37,8 +36,32 @@ event projection are next.
 - Stripe Checkout/payment/refund references;
 - payment expiration and refund state;
 - the `AppointmentPaymentProvider` port.
+- retryable Checkout attempts and an append-only appointment funding journal.
 
-Tables are `openchair_funding_requests` and `openchair_payments`.
+Tables are `openchair_funding_requests`, `openchair_payments`,
+`openchair_payment_attempts`, and `openchair_funding_ledger_entries`.
+
+## MVP HTTP flow
+
+1. `POST /api/v1/openchair/appointments/:id/funding/approve`
+2. `POST /api/v1/openchair/appointments/:id/funding/sponsor/checkout`
+3. After the sponsor-paid webhook and patient reservation:
+   `POST /api/v1/openchair/appointments/:id/funding/patient/checkout`
+4. For a full refund:
+   `POST /api/v1/openchair/appointments/:id/funding/:payer/refund`
+
+Checkout and refund calls accept an `Idempotency-Key` header. A failed or
+expired Checkout can be retried with a new key while the funding request is
+still active. Browser returns never mark a payment paid.
+
+Appointment funding uses `STRIPE_APPOINTMENT_SECRET_KEY` and
+`STRIPE_APPOINTMENT_WEBHOOK_SECRET`, separate from SaaS subscription
+configuration. Run `npm run stripe:listen:appointments` for local forwarding.
+
+Stripe Connect is intentionally not part of this MVP. A future payout worker
+should consume fully-funded/visit-completed facts, create transfers to clinic
+connected accounts, and append payout ledger records; it must not reinterpret
+Checkout receipts as clinic payouts.
 
 ## Provider boundary
 

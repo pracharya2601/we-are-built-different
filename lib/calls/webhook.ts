@@ -12,7 +12,7 @@ import {
   finishCallAttempt,
   updateCallProgress,
 } from "./store";
-import type { CallResultData } from "./types";
+import type { CallOutcome, CallResultData } from "./types";
 
 export class VapiWebhookError extends Error {
   readonly code: string;
@@ -37,6 +37,11 @@ export async function handleVapiWebhook(
     expectedToken: string;
     encryptionKey: string;
     body: unknown;
+    onCallEnded?: (input: {
+      callAttemptId: string;
+      callJobId: string;
+      outcome: CallOutcome;
+    }) => Promise<void>;
   },
 ): Promise<{ accepted: true; duplicate: boolean }> {
   authenticateWebhook(input.authorization, input.expectedToken);
@@ -103,6 +108,11 @@ export async function handleVapiWebhook(
         resultCiphertext,
         endedReason: readString(message, "endedReason"),
         endedAt: parseDate(readString(message, "timestamp")) ?? new Date(),
+      });
+      await input.onCallEnded?.({
+        callAttemptId: attempt.id,
+        callJobId: attempt.jobId,
+        outcome: parsed.outcome,
       });
     }
     await completeProviderEvent(db, claim.id);
