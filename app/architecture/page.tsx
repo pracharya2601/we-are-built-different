@@ -25,6 +25,10 @@ const nodes = [
 ];
 
 export default function ArchitecturePage() {
+  const primaryHref = companyConfig.features.authentication
+    ? "/api/auth/login?returnTo=/dashboard"
+    : "/appointments/demo-openchair";
+
   return (
     <main>
       <nav className="shell nav" aria-label="Primary navigation">
@@ -34,9 +38,11 @@ export default function ArchitecturePage() {
         </Link>
         <Link
           className="button button-quiet"
-          href="/api/auth/login?returnTo=/dashboard"
+          href={primaryHref}
         >
-          Sign in
+          {companyConfig.features.authentication
+            ? "Sign in"
+            : "Open preview"}
         </Link>
       </nav>
       <section className="shell hero">

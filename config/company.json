@@ -15,6 +15,7 @@
     "defaultWorkspaceSlug": "openchair"
   },
   "features": {
+    "authentication": false,
     "billing": true,
     "multiTenant": true,
     "publicLandingPage": false

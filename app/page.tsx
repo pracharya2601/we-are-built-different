@@ -23,6 +23,13 @@ const flow = [
 const signInHref = "/api/auth/login?returnTo=/dashboard";
 
 export default function Home() {
+  const primaryHref = companyConfig.features.authentication
+    ? signInHref
+    : "/appointments/demo-openchair";
+  const primaryLabel = companyConfig.features.authentication
+    ? "Sign in"
+    : "Open preview";
+
   return (
     <main>
       <nav className="shell nav" aria-label="Primary navigation">
@@ -39,8 +46,8 @@ export default function Home() {
           >
             Why access matters
           </a>
-          <Link className="button button-quiet" href={signInHref}>
-            Sign in
+          <Link className="button button-quiet" href={primaryHref}>
+            {primaryLabel}
           </Link>
         </div>
       </nav>
@@ -61,8 +68,10 @@ export default function Home() {
           credits, and an eligible patient privately claims the opening.
         </p>
         <div className="hero-actions">
-          <Link className="button button-primary" href={signInHref}>
-            Get started
+          <Link className="button button-primary" href={primaryHref}>
+            {companyConfig.features.authentication
+              ? "Get started"
+              : "Explore the workflow"}
             <span aria-hidden="true">↗</span>
           </Link>
           <a

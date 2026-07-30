@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AuthGuard } from "@/lib/auth";
+import { companyConfig } from "@/lib/config";
 import {
   buildWorkflowFixture,
   isViewerRole,
@@ -32,12 +33,17 @@ export default async function AppointmentPage({
   const viewerRole =
     requestedRole && isViewerRole(requestedRole) ? requestedRole : "operator";
   const projection = buildWorkflowFixture(fixture, viewerRole);
+  const preview = <WorkflowPreview projection={projection} />;
+
+  if (!companyConfig.features.authentication) {
+    return preview;
+  }
 
   return (
     <AuthGuard
       returnTo={`/appointments/demo-openchair?fixture=${fixture}&role=${viewerRole}`}
     >
-      <WorkflowPreview projection={projection} />
+      {preview}
     </AuthGuard>
   );
 }

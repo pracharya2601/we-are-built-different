@@ -17,6 +17,7 @@ type CompanyConfig = {
     defaultWorkspaceSlug: string;
   };
   features: {
+    authentication: boolean;
     billing: boolean;
     multiTenant: boolean;
     publicLandingPage: boolean;

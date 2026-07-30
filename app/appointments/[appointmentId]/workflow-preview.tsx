@@ -32,7 +32,7 @@ export function WorkflowPreview({
             Synthetic fixture data · actions do not contact Stripe or Vapi
           </span>
         </div>
-        <Link href="/dashboard">Back to dashboard</Link>
+        <Link href="/">Back to home</Link>
       </section>
 
       <header className="workflow-summary">

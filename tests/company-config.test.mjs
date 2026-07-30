@@ -12,6 +12,7 @@ test("company configuration enables tenant workspaces", async () => {
   assert.equal(config.company.id, "openchair");
   assert.equal(config.company.name, "OpenChair");
   assert.equal(config.company.shortName, "OC");
+  assert.equal(config.features.authentication, false);
   assert.equal(config.features.multiTenant, true);
   assert.equal(config.features.publicLandingPage, false);
   assert.equal(config.features.billing, true);

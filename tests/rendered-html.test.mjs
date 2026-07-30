@@ -57,6 +57,29 @@ test("authentication and billing have no demo fallback", async () => {
   assert.doesNotMatch(sources.join("\n"), /createDemoSession|mode: "demo"/);
 });
 
+test("auth-off focus mode exposes only the synthetic workflow preview", async () => {
+  const [page, appointment, api] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../app/appointments/[appointmentId]/page.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/api/openchair/fixtures/[fixtureName]/route.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(page, /companyConfig\.features\.authentication/);
+  assert.match(page, /\/appointments\/demo-openchair/);
+  assert.match(appointment, /if \(!companyConfig\.features\.authentication\)/);
+  assert.match(appointment, /<AuthGuard/);
+  assert.match(api, /withApiAuth/);
+});
+
 test("Auth0 API audience is required for token permissions", async () => {
   const config = await readFile(
     new URL("../lib/auth/config.ts", import.meta.url),
