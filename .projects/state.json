@@ -35,6 +35,14 @@
           "envKey": "CALL_DATA_ENCRYPTION_KEY"
         },
         {
+          "variableName": "stripe-appointment-secret-key",
+          "envKey": "STRIPE_APPOINTMENT_SECRET_KEY"
+        },
+        {
+          "variableName": "stripe-appointment-webhook-secret",
+          "envKey": "STRIPE_APPOINTMENT_WEBHOOK_SECRET"
+        },
+        {
           "variableName": "stripe-price-platform-lite",
           "envKey": "STRIPE_PRICE_PLATFORM_LITE"
         },
@@ -130,6 +138,14 @@
     "call-data-encryption-key": {
       "name": "call-data-encryption-key",
       "backendId": "fprjvar_61V8QLbQdLFrrv7CY16V8AIx4ESQ355FeeDbjbUhE3cO"
+    },
+    "stripe-appointment-secret-key": {
+      "name": "stripe-appointment-secret-key",
+      "backendId": "fprjvar_61V8Re3gHWwahg4c416V8AIx4ESQ355FeeDbjbUhEJ2W"
+    },
+    "stripe-appointment-webhook-secret": {
+      "name": "stripe-appointment-webhook-secret",
+      "backendId": "fprjvar_61V8Re5g9yBUX2XcD16V8AIx4ESQ355FeeDbjbUhE0Vs"
     },
     "stripe-price-platform-lite": {
       "name": "stripe-price-platform-lite",

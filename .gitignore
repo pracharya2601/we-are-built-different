@@ -48,6 +48,8 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/.run/
+/Demo UI/
 
 .projects/cache
 .projects/vault

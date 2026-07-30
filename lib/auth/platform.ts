@@ -26,8 +26,10 @@ export async function requirePlatformOwner(
 
 export async function PlatformOwnerGuard({
   children,
+  returnTo = "/dashboard/admin/calls",
 }: {
   children: ReactNode;
+  returnTo?: string;
 }) {
   try {
     await requirePlatformOwner();
@@ -38,7 +40,7 @@ export async function PlatformOwnerGuard({
       error.code === "authentication_required"
     ) {
       redirect(
-        `/api/auth/login?returnTo=${encodeURIComponent("/dashboard/admin/calls")}`,
+        `/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
       );
     }
     if (error instanceof AuthError && error.status === 403) {

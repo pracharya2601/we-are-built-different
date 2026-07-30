@@ -23,6 +23,7 @@
   "access": {
     "auth0OrganizationId": null,
     "bootstrapOwnerEmails": [
+      "ali.amjad52114@gmail.com",
       "pracharya2601@gmail.com"
     ],
     "allowedEmailDomains": [
