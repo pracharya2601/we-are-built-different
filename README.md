@@ -37,12 +37,10 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Open `http://localhost:3000`. The committed local Wrangler environment enables
-the explicit three-user development chooser when
-`features.authentication=false`. The chooser provisions separate service
-provider, platform-owner, and beneficiary identities in local D1; authorization
-and tenant membership checks still run on every protected request. Staging does
-not inherit `LOCAL_AUTH_BYPASS` and continues to require Auth0.
+Open `http://localhost:3000`. Auth0 is the only way to obtain a session, in
+every environment including localhost — there is no development bypass or
+persona chooser. Sign-in fails closed at `/auth/setup` until the Auth0
+variables in `.env.local` are complete.
 
 Stripe-backed billing and Vapi-backed calls fail closed until their complete
 local configuration is present. Tests never create fake provider results or

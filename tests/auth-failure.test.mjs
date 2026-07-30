@@ -40,6 +40,42 @@ test("only published codes survive normalization into the page URL", () => {
   assert.equal(authFailurePath("spoofed_code"), AUTH_FAILURE_PATH);
 });
 
+test("every AuthError code the callback can raise reaches the page", async () => {
+  // A code that does not survive normalization renders a generic page with no
+  // reference at all, which is undiagnosable without the server log.
+  const sources = await Promise.all(
+    ["../lib/auth/oidc.ts", "../lib/auth/flow.ts"].map((path) =>
+      readFile(new URL(path, import.meta.url), "utf8"),
+    ),
+  );
+  const raised = new Set();
+  for (const source of sources) {
+    for (const match of source.matchAll(/new AuthError\(\s*"([a-z_]+)"/g)) {
+      raised.add(match[1]);
+    }
+  }
+  assert.ok(raised.size > 15, `expected many codes, found ${raised.size}`);
+
+  const unreachable = [...raised].filter(
+    (code) => normalizeAuthFailureCode(code) === null,
+  );
+  assert.deepEqual(
+    unreachable,
+    [],
+    `these codes would render with no reference: ${unreachable.join(", ")}`,
+  );
+});
+
+test("the failure page shows the code but never provider text", async () => {
+  const page = await readFile(
+    new URL("../app/auth/error/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(page, /normalizeAuthFailureCode\(params\.code\)/);
+  assert.match(page, /<code>\{code\}<\/code>/);
+  assert.doesNotMatch(page, /error_description|errorDescription/);
+});
+
 test("only HTML callers are redirected to the rendered failure page", () => {
   assert.equal(prefersHtml("text/html,application/xhtml+xml"), true);
   assert.equal(prefersHtml("TEXT/HTML"), true);

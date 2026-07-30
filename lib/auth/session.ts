@@ -1,13 +1,15 @@
-import { getAuthConfig } from "./config";
-import { openJson, sealJson } from "./crypto";
-import { normalizeSignInIntent } from "./sign-in-intent";
+// Value imports carry the .ts extension so tests can import this module
+// directly under Node type stripping, matching lib/auth/authorization.ts.
+import { getAuthConfig } from "./config.ts";
+import { openJson, sealJson } from "./crypto.ts";
+import { normalizeSignInIntent } from "./sign-in-intent.ts";
 import {
   WORKSPACE_PERMISSIONS,
   WORKSPACE_ROLES,
   type AuthSession,
   type AuthTransaction,
-} from "./types";
-import { isAccountType } from "../accounts";
+} from "./types.ts";
+import { isAccountType } from "../accounts/index.ts";
 
 const SESSION_PURPOSE = "built-different/auth-session/v1";
 const TRANSACTION_PURPOSE = "built-different/auth-transaction/v1";

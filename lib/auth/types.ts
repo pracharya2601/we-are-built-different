@@ -35,7 +35,7 @@ export type AuthContext = {
   signInIntent: SignInIntent | null;
 };
 
-export type AuthMode = "auth0" | "local";
+export type AuthMode = "auth0";
 
 export type AuthSession = AuthContext & {
   version: 1;

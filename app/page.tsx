@@ -22,14 +22,34 @@ const flow = [
 
 const signInHref = "/api/auth/login?returnTo=/dashboard";
 
-export default function Home() {
-  const primaryHref = companyConfig.features.authentication
-    ? signInHref
-    : signInHref;
-  const primaryLabel = companyConfig.features.authentication
-    ? "Sign in"
-    : "Choose local user";
+// Each entry is the same Auth0 sign-in with a declared intent. The intent only
+// chooses which kind of workspace is provisioned on a first login
+// (accountTypeFromSignInIntent); it grants nothing and is re-derived from D1
+// membership on every later request. Without one, sign-in defaults to
+// beneficiary.
+const signInIntents = [
+  {
+    intent: "service_provider",
+    label: "I provide care",
+    detail: "Release openings from your clinic's canceled appointments.",
+  },
+  {
+    intent: "nonprofit",
+    label: "I fund care",
+    detail: "Sponsor care credits and manage giving workflows.",
+  },
+  {
+    intent: "beneficiary",
+    label: "I need care",
+    detail: "Privately claim a funded opening near you.",
+  },
+] as const;
 
+function intentHref(intent: string): string {
+  return `${signInHref}&intent=${intent}`;
+}
+
+export default function Home() {
   return (
     <main>
       <nav className="shell nav" aria-label="Primary navigation">
@@ -46,8 +66,8 @@ export default function Home() {
           >
             Why access matters
           </a>
-          <Link className="button button-quiet" href={primaryHref}>
-            {primaryLabel}
+          <Link className="button button-quiet" href={signInHref}>
+            Sign in
           </Link>
         </div>
       </nav>
@@ -68,20 +88,10 @@ export default function Home() {
           credits, and an eligible patient privately claims the opening.
         </p>
         <div className="hero-actions">
-          <Link className="button button-primary" href={primaryHref}>
-            {companyConfig.features.authentication
-              ? "Get started"
-              : "Open local dashboard"}
+          <Link className="button button-primary" href={signInHref}>
+            Get started
             <span aria-hidden="true">↗</span>
           </Link>
-          {!companyConfig.features.authentication ? (
-            <Link
-              className="button button-secondary"
-              href="/appointments/demo-openchair"
-            >
-              Explore the workflow
-            </Link>
-          ) : null}
           <a
             className="button button-secondary"
             href="https://www.nidcr.nih.gov/research/oralhealthinamerica/section-1-summary"
@@ -90,6 +100,20 @@ export default function Home() {
           >
             Read the oral-health evidence
           </a>
+        </div>
+
+        <div className="intent-grid" aria-label="Sign in by role">
+          {signInIntents.map((option) => (
+            <Link
+              className="intent-card"
+              key={option.intent}
+              href={intentHref(option.intent)}
+            >
+              <strong>{option.label}</strong>
+              <span>{option.detail}</span>
+              <em aria-hidden="true">Sign in ↗</em>
+            </Link>
+          ))}
         </div>
         <div className="system-strip" aria-label="OpenChair model">
           <div>

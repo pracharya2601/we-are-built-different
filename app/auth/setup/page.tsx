@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import {
   getAuthConfigurationStatus,
-  isLocalAuthEnabled,
   normalizeSignInIntent,
   safeReturnTo,
 } from "@/lib/auth";
@@ -17,10 +16,6 @@ export default async function AuthSetupPage({
   const params = await searchParams;
   const returnTo = safeReturnTo(params.returnTo);
   const signInIntent = normalizeSignInIntent(params.intent);
-  if (isLocalAuthEnabled()) {
-    const loginParams = new URLSearchParams({ returnTo });
-    redirect(`/api/auth/login?${loginParams.toString()}`);
-  }
   const status = getAuthConfigurationStatus();
   if (status.configured) {
     const loginParams = new URLSearchParams({ returnTo });

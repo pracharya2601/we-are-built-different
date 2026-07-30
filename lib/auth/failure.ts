@@ -58,23 +58,70 @@ const FALLBACK_COPY: AuthFailureCopy = {
   retryable: true,
 };
 
+/**
+ * Every AuthError code that can end a sign-in. Most have no distinct user
+ * meaning -- "the token signature is invalid" is not actionable advice -- but
+ * they must survive to the page so the failure is diagnosable without reading
+ * the server log. Codes outside this set never render: the page reads `code`
+ * from the query string, so an arbitrary value would be attacker-supplied text.
+ */
+const AUTH_FAILURE_CODES: ReadonlySet<string> = new Set([
+  // callback route
+  "missing_transaction",
+  "invalid_state",
+  "authorization_failed",
+  "unexpected_callback",
+  "callback_failed",
+  "membership_required",
+  // login/flow
+  "invalid_organization",
+  "invalid_invitation",
+  "missing_invitation_organization",
+  "invalid_token_organization",
+  "organization_mismatch",
+  "access_token_identity_mismatch",
+  // token exchange
+  "token_exchange_failed",
+  "missing_id_token",
+  "missing_access_token",
+  // token validation
+  "invalid_token",
+  "invalid_token_algorithm",
+  "invalid_token_signature",
+  "invalid_token_claims",
+  "invalid_nonce",
+  "invalid_access_token_hash",
+  "invalid_issuer",
+  "invalid_audience",
+  "invalid_authorized_party",
+  "missing_audience",
+  "expired_token",
+  "future_token",
+  "inactive_token",
+  // signing keys
+  "unknown_signing_key",
+  "jwks_unavailable",
+  "invalid_jwks",
+]);
+
 export function describeAuthFailure(
   code: string | null | undefined,
 ): AuthFailureCopy {
   const normalized = normalizeAuthFailureCode(code);
-  return normalized ? FAILURE_COPY[normalized] : FALLBACK_COPY;
+  if (!normalized) return FALLBACK_COPY;
+  // The own-property check matters: a bare lookup of an inherited key such as
+  // `__proto__` or `toString` returns a truthy non-copy value.
+  return Object.hasOwn(FAILURE_COPY, normalized)
+    ? FAILURE_COPY[normalized]
+    : FALLBACK_COPY;
 }
 
-/**
- * Only codes we publish copy for reach the page; anything else is generic.
- * The own-property check matters: a bare lookup of an inherited key such as
- * `__proto__` or `toString` returns a truthy non-copy value.
- */
+/** Only codes this module publishes may reach the page. */
 export function normalizeAuthFailureCode(
   code: string | null | undefined,
 ): string | null {
   if (!code) return null;
-  return Object.hasOwn(FAILURE_COPY, code) ? code : null;
+  return AUTH_FAILURE_CODES.has(code) ? code : null;
 }
 
 export function authFailurePath(

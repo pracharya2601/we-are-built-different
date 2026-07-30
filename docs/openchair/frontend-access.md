@@ -94,6 +94,11 @@ allowed. The command endpoint must independently repeat authorization,
 resource, idempotency, and expected-version checks. A previously rendered
 decision is not proof that a later command remains authorized.
 
+For the concrete HTTP contract behind the sponsor's funding actions — request
+shapes, idempotency headers, the full error-code table, and what a Checkout
+return does not prove — see
+[Sponsor funding](../modules/sponsor-funding.md#frontend-contract).
+
 The reusable policy entry point is
 `lib/openchair/authorization/frontend-access.ts`. Its input contains effective
 OpenChair permissions plus stored appointment relationships. Even an explicit
@@ -102,14 +107,12 @@ sponsor, or operator relationship.
 
 ## Fixture preview
 
-The role selector on `/appointments/demo-openchair` exists only to inspect
-synthetic projections. When `features.authentication` is `false`, this
-server-rendered preview is public so product UI work can continue without an
-Auth0 session. It does not create a user, workspace membership, or access to
-tenant data, and its actions remain disabled.
+The `/appointments/demo-openchair` preview page and its role selector have been
+removed, along with the `features.authentication` branch that rendered them
+without a session. There is no unauthenticated view of a projection.
 
-The fixture API endpoint remains authenticated in every mode and marks its
-response with:
+Synthetic scenarios remain available only through the fixture API endpoint,
+which is authenticated in every mode and marks its response with:
 
 ```text
 X-OpenChair-Data-Source: synthetic-fixture

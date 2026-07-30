@@ -27,9 +27,6 @@ export default async function DashboardLayout({
             <Link href="/dashboard/workspaces">Workspaces & roles</Link>
             <Link href="/dashboard/settings">Settings & access</Link>
             <Link href="/dashboard/finance">Funds & participants</Link>
-            <Link href="/appointments/demo-openchair">
-              OpenChair workflow
-            </Link>
             {companyConfig.features.billing ? (
               <Link href="/dashboard/billing">Billing</Link>
             ) : null}

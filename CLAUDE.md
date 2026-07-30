@@ -37,12 +37,12 @@ Application code never receives `env` as a parameter: `db/index.ts` reads the
 Bindings are declared per environment in `wrangler.jsonc`, and declaring one
 there does not create the remote resource.
 
-**Signing in locally without Auth0** needs all three of `APP_ENV=development`,
-`LOCAL_AUTH_BYPASS=true`, and `features.authentication: false`
-(`isLocalAuthEnabled()` in `lib/auth/local.ts`). The committed local Wrangler
-env and `config/company.json` already satisfy all three, so the persona chooser
-is on by default locally and off everywhere else — flipping any one of them
-turns it off. See `docs/modules/identity-and-workspaces.md`.
+**Auth0 is the only session issuer**, localhost included. There is no
+development bypass, persona chooser, or demo mode, and `AuthMode` is the single
+literal `"auth0"`. `completeAuth0Login` in `lib/auth/flow.ts` is the one place a
+session is minted; tests assert no other module constructs one. Local sign-in
+therefore needs real Auth0 values in `.env.local`. See
+`docs/modules/identity-and-workspaces.md`.
 
 **Secrets go in `.env.local`, never `.env`.** Wrangler loads `.env` first, so a
 stray `AUTH0_*` key there silently shadow-fills a gap and can pair one tenant's
@@ -73,8 +73,10 @@ Conventions worth knowing before you write code:
   pure reducer over expected versions; the UI reads only the role-safe
   projection built in `lib/openchair/projections`, which strips denied fields
   before serialization (`docs/openchair/frontend-access.md`).
-- `/appointments/demo-openchair?fixture=…&role=…` renders JSON from
-  `fixtures/openchair/` — preview only, never an authorization path.
+- The `/appointments/demo-openchair` preview page has been removed. Fixtures in
+  `fixtures/openchair/` remain, consumed by `lib/openchair/fixtures` and the
+  authenticated `app/api/openchair/fixtures/[fixtureName]` endpoint — synthetic
+  presentation input only, never an authorization path.
 
 <!-- stripe-projects-cli managed:claude-md:start -->
 look at AGENTS.md for your rules

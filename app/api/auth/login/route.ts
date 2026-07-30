@@ -4,17 +4,11 @@ import {
   beginAuth0Login,
   getAuthConfig,
   getAuthSession,
-  isLocalAuthEnabled,
   normalizeSignInIntent,
-  normalizeLocalPersona,
-  provisionLocalPersona,
   safeReturnTo,
-  serializeLocalPersonaCookie,
 } from "@/lib/auth";
 import {
-  clearCookie,
   serializeCookie,
-  SESSION_COOKIE,
   TRANSACTION_COOKIE,
 } from "@/lib/auth/cookies";
 import { encodeTransaction } from "@/lib/auth/session";
@@ -27,18 +21,6 @@ export async function GET(request: Request): Promise<Response> {
     requestUrl.searchParams.get("intent"),
   );
   const forceLogin = requestUrl.searchParams.get("force") === "1";
-
-  if (isLocalAuthEnabled()) {
-    const existingSession = await getAuthSession(request);
-    if (existingSession && !forceLogin) {
-      return Response.redirect(new URL(returnTo, requestUrl.origin), 302);
-    }
-    const chooserParams = new URLSearchParams({ returnTo });
-    return Response.redirect(
-      new URL(`/auth/select-role?${chooserParams.toString()}`, requestUrl.origin),
-      302,
-    );
-  }
 
   let config;
   try {
@@ -79,39 +61,4 @@ export async function GET(request: Request): Promise<Response> {
     ),
   );
   return new Response(null, { status: 302, headers });
-}
-
-export async function POST(request: Request): Promise<Response> {
-  if (!isLocalAuthEnabled()) {
-    return Response.json(
-      { error: { code: "local_auth_disabled", message: "Not found." } },
-      { status: 404, headers: { "cache-control": "no-store" } },
-    );
-  }
-
-  const requestUrl = new URL(request.url);
-  const returnTo = safeReturnTo(requestUrl.searchParams.get("returnTo"));
-  const formData = await request.formData();
-  const persona = normalizeLocalPersona(formData.get("persona"));
-  if (!persona) {
-    return Response.json(
-      {
-        error: {
-          code: "invalid_local_persona",
-          message: "Choose one of the available local users.",
-        },
-      },
-      { status: 400, headers: { "cache-control": "no-store" } },
-    );
-  }
-
-  await provisionLocalPersona(persona);
-  const headers = new Headers({
-    location: new URL(returnTo, requestUrl.origin).toString(),
-    "cache-control": "no-store",
-  });
-  headers.append("set-cookie", serializeLocalPersonaCookie(persona));
-  headers.append("set-cookie", clearCookie(SESSION_COOKIE));
-  headers.append("set-cookie", clearCookie(TRANSACTION_COOKIE));
-  return new Response(null, { status: 303, headers });
 }

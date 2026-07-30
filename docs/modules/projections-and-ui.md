@@ -22,15 +22,15 @@ It does not own official workflow state or backend authorization.
 - `lib/openchair/projections/workflow-view.ts`: stages and allowed actions.
 - `lib/openchair/fixtures`: validated synthetic scenarios.
 - `fixtures/openchair`: JSON fixture inputs.
-- `app/appointments/[appointmentId]`: protected preview.
-- `app/api/openchair/fixtures/[fixtureName]`: fixture API.
+- `app/api/openchair/fixtures/[fixtureName]`: fixture API (authenticated).
 - `app/globals.css`: shared presentation styles.
 - `tests/openchair-workflow.test.mjs`: projection/fixture alignment.
 
 ## Fixture boundary
 
-The current appointment page accepts fixture and viewer-role query parameters
-for previewing UI states. They are synthetic presentation inputs only.
+The fixture API accepts fixture and viewer-role parameters for previewing UI
+states. They are synthetic presentation inputs only. The page that once exposed
+them unauthenticated has been removed.
 
 They must never:
 

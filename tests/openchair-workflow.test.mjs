@@ -369,22 +369,7 @@ test("fixture catalog, D1 migration, UI, and architecture docs stay aligned", as
   assert.match(openChairMigration, /openchair_outreach_attempts/);
   assert.match(openChairMigration, /workspace_id/);
 
-  const [page, preview, architecture, workflow, frontendAccess] =
-    await Promise.all([
-    readFile(
-      new URL(
-        "../app/appointments/[appointmentId]/page.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
-    readFile(
-      new URL(
-        "../app/appointments/[appointmentId]/workflow-preview.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
+  const [architecture, workflow, frontendAccess] = await Promise.all([
     readFile(
       new URL("../docs/openchair/architecture.md", import.meta.url),
       "utf8",
@@ -398,9 +383,6 @@ test("fixture catalog, D1 migration, UI, and architecture docs stay aligned", as
       "utf8",
     ),
   ]);
-  assert.match(page, /<AuthGuard/);
-  assert.match(preview, /actions do not contact Stripe or Vapi/i);
-  assert.match(preview, /projection\.access\.actions/);
   assert.match(architecture, /modular monolith/i);
   assert.match(architecture, /workspaceId/);
   assert.match(workflow, /funding\.patient_checkout_created/);

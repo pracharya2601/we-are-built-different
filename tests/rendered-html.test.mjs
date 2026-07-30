@@ -31,33 +31,67 @@ test("landing source exposes navigation without embedding credentials", async ()
   );
 });
 
-test("sign-in uses a local chooser only when the development bypass is enabled", async () => {
-  const [page, login, localAuth, chooser, wrangler, flow] = await Promise.all([
+test("sign-in goes to Auth0 with no local persona bypass", async () => {
+  const [page, login, wrangler, flow, types] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8"),
-    readFile(new URL("../lib/auth/local.ts", import.meta.url), "utf8"),
-    readFile(
-      new URL("../app/auth/select-role/page.tsx", import.meta.url),
-      "utf8",
-    ),
     readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8"),
     readFile(new URL("../lib/auth/flow.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/auth/types.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /\/api\/auth\/login\?returnTo=\/dashboard/);
+  assert.match(login, /beginAuth0Login/);
+  assert.match(login, /normalizeSignInIntent/);
+  assert.match(flow, /signInIntent/);
+
+  // Each landing-page role entry is the real Auth0 sign-in with a declared
+  // intent -- never a separate session path.
+  const { SIGN_IN_INTENTS } = await import("../lib/auth/sign-in-intent.ts");
+  for (const intent of SIGN_IN_INTENTS) {
+    assert.ok(
+      page.includes(`intent: "${intent}"`),
+      `landing page must offer the ${intent} entry point`,
+    );
+  }
+  assert.match(page, /\$\{signInHref\}&intent=\$\{intent\}/);
+  assert.doesNotMatch(page, /provisionLocalPersona|persona=/);
+
+  // Auth0 is the only way to obtain a session, in every environment.
+  assert.match(types, /export type AuthMode = "auth0";/);
+  assert.doesNotMatch(login, /isLocalAuthEnabled|provisionLocalPersona/);
   assert.doesNotMatch(page, /\/auth\/select-role/);
-  assert.match(login, /isLocalAuthEnabled/);
-  assert.match(login, /provisionLocalPersona/);
-  assert.match(chooser, /LOCAL_AUTH_PERSONAS/);
-  assert.match(localAuth, /readEnv\("APP_ENV"\) === "development"/);
-  assert.match(localAuth, /readEnv\("LOCAL_AUTH_BYPASS"\) === "true"/);
-  assert.match(wrangler, /"LOCAL_AUTH_BYPASS": "true"/);
+  assert.doesNotMatch(wrangler, /LOCAL_AUTH_BYPASS/);
+  assert.equal(JSON.parse(wrangler).vars.LOCAL_AUTH_BYPASS, undefined);
   assert.equal(
     JSON.parse(wrangler).env.staging.vars.LOCAL_AUTH_BYPASS,
     undefined,
   );
-  assert.match(login, /normalizeSignInIntent/);
-  assert.match(flow, /signInIntent/);
+});
+
+test("no module can mint a session outside the Auth0 callback", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const dir = new URL("../lib/auth/", import.meta.url);
+  const files = (await readdir(dir)).filter((name) => name.endsWith(".ts"));
+
+  // A local-persona bypass previously lived here. Deleting it is only durable
+  // if nothing reintroduces a second session issuer.
+  assert.equal(files.includes("local.ts"), false);
+
+  const sources = await Promise.all(
+    files.map(async (name) => [
+      name,
+      await readFile(new URL(name, dir), "utf8"),
+    ]),
+  );
+  for (const [name, source] of sources) {
+    if (name === "flow.ts") continue; // completeAuth0Login is the one issuer
+    assert.doesNotMatch(
+      source,
+      /mode:\s*"(local|demo)"/,
+      `${name} must not construct a non-Auth0 session`,
+    );
+  }
 });
 
 test("authentication and billing have no demo fallback", async () => {
@@ -73,26 +107,32 @@ test("authentication and billing have no demo fallback", async () => {
   assert.doesNotMatch(sources.join("\n"), /createDemoSession|mode: "demo"/);
 });
 
-test("auth-off focus mode exposes only the synthetic workflow preview", async () => {
-  const [page, appointment, api] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(
-      new URL("../app/appointments/[appointmentId]/page.tsx", import.meta.url),
-      "utf8",
-    ),
-    readFile(
-      new URL(
-        "../app/api/openchair/fixtures/[fixtureName]/route.ts",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
-  ]);
+test("the demo-openchair preview route no longer exists", async () => {
+  const { access } = await import("node:fs/promises");
+  const gone = await access(new URL("../app/appointments/", import.meta.url))
+    .then(() => false)
+    .catch(() => true);
+  assert.equal(gone, true, "app/appointments/ must not exist");
 
-  assert.match(page, /companyConfig\.features\.authentication/);
-  assert.match(page, /\/appointments\/demo-openchair/);
-  assert.match(appointment, /if \(!companyConfig\.features\.authentication\)/);
-  assert.match(appointment, /<AuthGuard/);
+  // Nothing may link to the removed route.
+  const linked = await Promise.all(
+    ["../app/page.tsx", "../app/dashboard/layout.tsx"].map((path) =>
+      readFile(new URL(path, import.meta.url), "utf8"),
+    ),
+  );
+  for (const source of linked) {
+    assert.doesNotMatch(source, /\/appointments\/demo-openchair/);
+  }
+});
+
+test("the fixture API that outlived the preview stays authenticated", async () => {
+  const api = await readFile(
+    new URL(
+      "../app/api/openchair/fixtures/[fixtureName]/route.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   assert.match(api, /withApiAuth/);
 });
 

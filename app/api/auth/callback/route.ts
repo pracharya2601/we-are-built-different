@@ -94,6 +94,16 @@ export async function GET(request: Request): Promise<Response> {
   } catch (error) {
     const authError = toAuthError(error);
 
+    // Every failed sign-in is logged with its code, not just the unexpected
+    // ones. The rendered page deliberately carries no provider text, so this is
+    // the only record of why a login ended. Codes and messages are ours; no
+    // authorization code, token, cookie, or header is included.
+    console.error("Auth0 sign-in failed", {
+      code: authError.code,
+      status: authError.status,
+      message: authError.message,
+    });
+
     // A browser arriving from Auth0 gets a rendered page; machine callers keep
     // the JSON error contract. Either way the transaction cookie is cleared.
     if (prefersHtml(request.headers.get("accept"))) {

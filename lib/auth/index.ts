@@ -59,17 +59,6 @@ export {
   type SignInIntent,
 } from "./sign-in-intent";
 export {
-  getLocalPersonaSession,
-  isLocalAuthEnabled,
-  LOCAL_AUTH_COOKIE,
-  LOCAL_AUTH_PERSONAS,
-  normalizeLocalPersona,
-  provisionLocalPersona,
-  serializeLocalPersonaCookie,
-  type LocalAuthPersona,
-  type LocalPersonaId,
-} from "./local";
-export {
   AuthError,
   WORKSPACE_PERMISSIONS,
   WORKSPACE_ROLES,

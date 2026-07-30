@@ -10,20 +10,24 @@
   },
   "application": {
     "name": "Care Capacity Control Plane",
-    "description": "Turn canceled healthcare appointments into privately claimed, sponsor-funded care—starting with dental.",
+    "description": "Turn canceled healthcare appointments into privately claimed, sponsor-funded care\u2014starting with dental.",
     "defaultWorkspaceName": "OpenChair",
     "defaultWorkspaceSlug": "openchair"
   },
   "features": {
-    "authentication": false,
+    "authentication": true,
     "billing": true,
     "multiTenant": true,
     "publicLandingPage": false
   },
   "access": {
     "auth0OrganizationId": null,
-    "bootstrapOwnerEmails": ["pracharya2601@gmail.com"],
-    "allowedEmailDomains": ["gmail.com"]
+    "bootstrapOwnerEmails": [
+      "pracharya2601@gmail.com"
+    ],
+    "allowedEmailDomains": [
+      "gmail.com"
+    ]
   },
   "entitlements": {
     "productAccessKey": "platform_access"

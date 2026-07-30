@@ -6,4 +6,4 @@ export {
   planAllowedForAccount,
   type AccountPolicy,
   type AccountType,
-} from "./policy";
+} from "./policy.ts";

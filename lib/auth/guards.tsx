@@ -13,7 +13,6 @@ import {
   authSetupPath,
   getAuthConfigurationStatus,
 } from "./config";
-import { isLocalAuthEnabled } from "./local";
 import { safeReturnTo } from "./flow";
 import {
   AuthError,
@@ -28,6 +27,33 @@ type RouteHandler<TContext> = (
   auth: AuthContext,
 ) => Promise<Response>;
 
+/**
+ * Turns an AuthError into the right redirect. Never returns: every branch
+ * either redirects or rethrows.
+ */
+function redirectForAuthError(error: unknown, safeDestination: string): never {
+  if (!(error instanceof AuthError)) throw error;
+
+  const loginUrl = (force = false) =>
+    `/api/auth/login?returnTo=${encodeURIComponent(safeDestination)}${
+      force ? "&force=1" : ""
+    }`;
+
+  if (error.code === "authentication_required") redirect(loginUrl());
+
+  // A signed session naming a workspace the user is no longer an active member
+  // of is stale, not forbidden -- it happens when a workspace is deleted or the
+  // local database is reset while a session cookie is still live. Sending it to
+  // /auth/forbidden strands the user on a page whose only link returns here.
+  // Re-authenticating re-resolves the workspace from D1 and issues a fresh
+  // session; force=1 is required because the stale cookie would otherwise
+  // short-circuit the login route.
+  if (error.code === "membership_required") redirect(loginUrl(true));
+
+  if (error.status === 403) redirect("/auth/forbidden");
+  throw error;
+}
+
 export async function AuthGuard({
   children,
   permission,
@@ -39,46 +65,15 @@ export async function AuthGuard({
 }) {
   const safeDestination = safeReturnTo(returnTo);
   const status = getAuthConfigurationStatus();
-  if (!isLocalAuthEnabled() && !status.configured) {
+  if (!status.configured) {
     redirect(authSetupPath(safeDestination));
   }
 
-  if (!permission) {
-    try {
-      await requireWorkspacePermission("workspace:view");
-      return children;
-    } catch (error) {
-      if (
-        error instanceof AuthError &&
-        error.code === "authentication_required"
-      ) {
-        redirect(
-          `/api/auth/login?returnTo=${encodeURIComponent(safeDestination)}`,
-        );
-      }
-      if (error instanceof AuthError && error.status === 403) {
-        redirect("/auth/forbidden");
-      }
-      throw error;
-    }
-  }
-
   try {
-    await requireWorkspacePermission(permission);
+    await requireWorkspacePermission(permission ?? "workspace:view");
     return children;
   } catch (error) {
-    if (
-      error instanceof AuthError &&
-      error.code === "authentication_required"
-    ) {
-      redirect(
-        `/api/auth/login?returnTo=${encodeURIComponent(safeDestination)}`,
-      );
-    }
-    if (error instanceof AuthError && error.status === 403) {
-      redirect("/auth/forbidden");
-    }
-    throw error;
+    redirectForAuthError(error, safeDestination);
   }
 }
 

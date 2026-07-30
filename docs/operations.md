@@ -79,14 +79,14 @@ Audit membership, billing, entitlement, and configuration changes. For account
 deletion, disable access immediately, then perform retention-aware erasure in a
 background job; never rewrite historical migration files.
 
-Local authentication bypass is intentionally triple-gated by
-`APP_ENV=development`, `LOCAL_AUTH_BYPASS=true`, and the company authentication
-feature flag being off. The local Wrangler vars enable it; staging vars do not.
-Never add `LOCAL_AUTH_BYPASS=true` to staging or production.
+There is no local authentication bypass. Auth0 issues every session in every
+environment, localhost included, and unconfigured Auth0 fails closed at
+`/auth/setup` rather than falling back to a synthetic identity. Do not
+reintroduce a persona chooser, demo session, or environment-gated bypass.
 
-Live authentication is tenant-scoped and fail-closed. A valid Auth0 session is
-not sufficient: every protected request rechecks the active local membership
-and workspace status. Suspensions and role changes therefore take effect
-immediately. App-managed team members must first complete a verified Auth0
-login. Auth0 Organization members are provisioned as local members and can
-then be promoted by a workspace owner or administrator.
+Live authentication is tenant-scoped and fail-closed: a valid Auth0 session is
+not sufficient, because every protected request rechecks the active local
+membership and workspace status. The operational consequence is that
+suspensions and role changes take effect immediately, with no session to
+expire. The trust model and member-provisioning rules behind this live in
+[multi-user collaboration](multi-user-collaboration.md).
