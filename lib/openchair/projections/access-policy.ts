@@ -160,6 +160,13 @@ export function filterProjectionForFrontend(
       can("beneficiary.list") || can("candidate.order")
         ? projection.panelData.selectedCandidateCount
         : undefined,
+    candidateOptions:
+      can("beneficiary.list") || can("candidate.order")
+        ? projection.panelData.candidateOptions
+        : undefined,
+    fundingApproved: can("funding.summary")
+      ? projection.panelData.fundingApproved
+      : undefined,
     currentCandidateName: can("outreach.status")
       ? projection.panelData.currentCandidateName
       : undefined,

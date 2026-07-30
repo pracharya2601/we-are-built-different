@@ -20,7 +20,69 @@
   "environments": {
     "default": {
       "output": ".env",
-      "resources": []
+      "resources": [],
+      "variables": [
+        {
+          "variableName": "app-env",
+          "envKey": "APP_ENV"
+        },
+        {
+          "variableName": "billing-grace-period-seconds",
+          "envKey": "BILLING_GRACE_PERIOD_SECONDS"
+        },
+        {
+          "variableName": "call-data-encryption-key",
+          "envKey": "CALL_DATA_ENCRYPTION_KEY"
+        },
+        {
+          "variableName": "stripe-price-platform-lite",
+          "envKey": "STRIPE_PRICE_PLATFORM_LITE"
+        },
+        {
+          "variableName": "stripe-price-platform-pro",
+          "envKey": "STRIPE_PRICE_PLATFORM_PRO"
+        },
+        {
+          "variableName": "stripe-product-platform-lite",
+          "envKey": "STRIPE_PRODUCT_PLATFORM_LITE"
+        },
+        {
+          "variableName": "stripe-product-platform-pro",
+          "envKey": "STRIPE_PRODUCT_PLATFORM_PRO"
+        },
+        {
+          "variableName": "stripe-secret-key",
+          "envKey": "STRIPE_SECRET_KEY"
+        },
+        {
+          "variableName": "stripe-webhook-secret",
+          "envKey": "STRIPE_WEBHOOK_SECRET"
+        },
+        {
+          "variableName": "stripe-webhook-tolerance-seconds",
+          "envKey": "STRIPE_WEBHOOK_TOLERANCE_SECONDS"
+        },
+        {
+          "variableName": "vapi-api-base-url",
+          "envKey": "VAPI_API_BASE_URL"
+        },
+        {
+          "variableName": "vapi-api-key",
+          "envKey": "VAPI_API_KEY"
+        },
+        {
+          "variableName": "vapi-assistant-id",
+          "envKey": "VAPI_ASSISTANT_ID"
+        },
+        {
+          "variableName": "vapi-phone-number-id",
+          "envKey": "VAPI_PHONE_NUMBER_ID"
+        },
+        {
+          "variableName": "vapi-webhook-token",
+          "envKey": "VAPI_WEBHOOK_TOKEN"
+        }
+      ]
     },
     "development": {
       "output": ".env.local",
@@ -45,6 +107,10 @@
     }
   },
   "variables": {
+    "app-env": {
+      "name": "app-env",
+      "backendId": "fprjvar_61V8Q3OQduWrHpnWB16V8AIx4ESQ355FeeDbjbUhEPaa"
+    },
     "auth0-app-base-url": {
       "name": "auth0-app-base-url",
       "backendId": "fprjvar_61V8ORLm70LAZE8tV16V8AIx4ESQ355FeeDbjbUhEKHQ"
@@ -56,6 +122,62 @@
     "auth0-session-secret": {
       "name": "auth0-session-secret",
       "backendId": "fprjvar_61V8ORYOdNfTpvwF216V8AIx4ESQ355FeeDbjbUhE1a4"
+    },
+    "billing-grace-period-seconds": {
+      "name": "billing-grace-period-seconds",
+      "backendId": "fprjvar_61V8Q47byKhYxm2wj16V8AIx4ESQ355FeeDbjbUhE7oO"
+    },
+    "call-data-encryption-key": {
+      "name": "call-data-encryption-key",
+      "backendId": "fprjvar_61V8QLbQdLFrrv7CY16V8AIx4ESQ355FeeDbjbUhE3cO"
+    },
+    "stripe-price-platform-lite": {
+      "name": "stripe-price-platform-lite",
+      "backendId": "fprjvar_61V8Q3meeKdXO2IKr16V8AIx4ESQ355FeeDbjbUhEVxY"
+    },
+    "stripe-price-platform-pro": {
+      "name": "stripe-price-platform-pro",
+      "backendId": "fprjvar_61V8Q3rT5WAjg3gjH16V8AIx4ESQ355FeeDbjbUhEXqK"
+    },
+    "stripe-product-platform-lite": {
+      "name": "stripe-product-platform-lite",
+      "backendId": "fprjvar_61V8Q3xQ0ifeTH9wv16V8AIx4ESQ355FeeDbjbUhEXlw"
+    },
+    "stripe-product-platform-pro": {
+      "name": "stripe-product-platform-pro",
+      "backendId": "fprjvar_61V8Q42hlujuuKwEB16V8AIx4ESQ355FeeDbjbUhEJJ2"
+    },
+    "stripe-secret-key": {
+      "name": "stripe-secret-key",
+      "backendId": "fprjvar_61V8Q3bpA5DUgSM3V16V8AIx4ESQ355FeeDbjbUhE9FA"
+    },
+    "stripe-webhook-secret": {
+      "name": "stripe-webhook-secret",
+      "backendId": "fprjvar_61V8Q3hJ4ecCD6kVc16V8AIx4ESQ355FeeDbjbUhEOpk"
+    },
+    "stripe-webhook-tolerance-seconds": {
+      "name": "stripe-webhook-tolerance-seconds",
+      "backendId": "fprjvar_61V8Q4CQdA2sXdx1l16V8AIx4ESQ355FeeDbjbUhEHB2"
+    },
+    "vapi-api-base-url": {
+      "name": "vapi-api-base-url",
+      "backendId": "fprjvar_61V8QL7BnsAGIsMma16V8AIx4ESQ355FeeDbjbUhEJxo"
+    },
+    "vapi-api-key": {
+      "name": "vapi-api-key",
+      "backendId": "fprjvar_61V8QL4IHFjSeFUHM16V8AIx4ESQ355FeeDbjbUhEEFU"
+    },
+    "vapi-assistant-id": {
+      "name": "vapi-assistant-id",
+      "backendId": "fprjvar_61V8QOKES0oyxt7Wc16V8AIx4ESQ355FeeDbjbUhEAmW"
+    },
+    "vapi-phone-number-id": {
+      "name": "vapi-phone-number-id",
+      "backendId": "fprjvar_61V8QONiOpLTuXWnS16V8AIx4ESQ355FeeDbjbUhERzU"
+    },
+    "vapi-webhook-token": {
+      "name": "vapi-webhook-token",
+      "backendId": "fprjvar_61V8QLXex2qwVtAaj16V8AIx4ESQ355FeeDbjbUhEO2K"
     }
   }
 }

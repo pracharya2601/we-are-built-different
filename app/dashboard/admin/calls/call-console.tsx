@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 type CallLog = {
   id: string;
@@ -30,6 +30,17 @@ export function CallConsole({ calls }: { calls: CallLog[] }) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const hasActiveCalls = calls.some((call) =>
+    ["scheduled", "queued", "in_progress"].includes(call.status),
+  );
+
+  useEffect(() => {
+    if (!hasActiveCalls) return;
+    const refreshInterval = window.setInterval(() => {
+      router.refresh();
+    }, 5_000);
+    return () => window.clearInterval(refreshInterval);
+  }, [hasActiveCalls, router]);
 
   async function submitCall(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

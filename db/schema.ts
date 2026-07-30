@@ -1067,6 +1067,44 @@ export const openchairAppointments = sqliteTable(
   ],
 );
 
+export const openchairAppointmentParticipants = sqliteTable(
+  "openchair_appointment_participants",
+  {
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "restrict" }),
+    appointmentId: text("appointment_id")
+      .notNull()
+      .references(() => openchairAppointments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    relationship: text("relationship", {
+      enum: ["clinic", "nonprofit", "sponsor"],
+    }).notNull(),
+    createdAt,
+  },
+  (table) => [
+    primaryKey({
+      name: "openchair_appointment_participants_pk",
+      columns: [
+        table.workspaceId,
+        table.appointmentId,
+        table.userId,
+      ],
+    }),
+    check(
+      "openchair_appointment_participants_relationship_check",
+      sql`${table.relationship} in ('clinic', 'nonprofit', 'sponsor')`,
+    ),
+    index("openchair_appointment_participants_user_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.appointmentId,
+    ),
+  ],
+);
+
 export const openchairWorkflows = sqliteTable(
   "openchair_workflows",
   {

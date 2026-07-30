@@ -6,6 +6,7 @@ import {
   fundingErrorResponse,
 } from "@/lib/openchair/funding";
 import { requireAppointmentSponsor } from "@/lib/openchair/sponsors";
+import { resolveLiveOpenChairContext } from "@/lib/openchair/authorization";
 import { getAppointmentFundingRuntime } from "@/lib/runtime/appointment-funding";
 
 type RouteContext = {
@@ -23,8 +24,23 @@ export const POST = withApiAuth(
           404,
         );
       }
-      await requireAppointmentSponsor(getDb(), auth, appointmentId);
       const runtime = getAppointmentFundingRuntime();
+      if (payerType === "sponsor") {
+        await requireAppointmentSponsor(getDb(), auth, appointmentId);
+      } else {
+        const viewer = await resolveLiveOpenChairContext(
+          runtime.db,
+          { workspaceId: auth.workspaceId, userId: auth.userId },
+          appointmentId,
+        );
+        if (!viewer?.permissions.includes("payment.link.send")) {
+          throw new FundingError(
+            "appointment_not_found",
+            "Appointment was not found.",
+            404,
+          );
+        }
+      }
       const origin = new URL(request.url).origin;
       const suppliedKey = request.headers.get("idempotency-key")?.trim();
       const idempotencyKey =

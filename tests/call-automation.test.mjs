@@ -122,9 +122,17 @@ test("structured outcomes override provider ended-reason heuristics", () => {
 });
 
 test("owner routes, queue messages, and environment resources stay isolated", async () => {
-  const [route, worker, types, schema, wrangler] = await Promise.all([
+  const [route, consoleSource, worker, types, schema, wrangler] =
+    await Promise.all([
     readFile(
       new URL("../app/api/v1/admin/calls/route.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/dashboard/admin/calls/call-console.tsx",
+        import.meta.url,
+      ),
       "utf8",
     ),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
@@ -135,6 +143,9 @@ test("owner routes, queue messages, and environment resources stay isolated", as
   assert.match(route, /withPlatformOwner/u);
   assert.match(route, /status: 202/u);
   assert.match(route, /protectCallRecipient/u);
+  assert.match(consoleSource, /hasActiveCalls/u);
+  assert.match(consoleSource, /setInterval/u);
+  assert.match(consoleSource, /router\.refresh/u);
   assert.match(worker, /async queue/u);
   assert.match(worker, /dispatchDueCallAttempts/u);
   assert.match(types, /jobId: string/u);
