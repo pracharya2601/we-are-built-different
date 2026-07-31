@@ -77,6 +77,127 @@ Beneficiaries can choose Lite or Pro through the normal billing screen.
 Subscription access changes only after a verified Stripe webhook updates the
 workspace entitlement.
 
+## How Auth0, Stripe, and application access fit together
+
+OpenChair deliberately keeps identity, authorization, and billing as separate
+security decisions:
+
+| System | What it answers | What it cannot grant by itself |
+| --- | --- | --- |
+| Auth0 | Who signed in, and whether the OIDC tokens are authentic | Workspace membership, application permissions, or paid access |
+| D1 application data | Which workspace the user belongs to, their role, permission overrides, and current entitlement | A successful payment or a verified external identity |
+| Stripe | The workspace customer, subscription, Price, and payment lifecycle | A user session, workspace membership, or direct dashboard access |
+
+A protected product request must pass each applicable gate:
+
+1. **Authentication:** validate the Auth0 login and decrypt the server session.
+2. **Tenant membership:** re-read the active `(workspaceId, userId)` membership
+   from D1.
+3. **Authorization:** calculate effective permissions from the current local
+   role plus per-member overrides.
+4. **Entitlement:** require the workspace's `platform_access` state when the
+   requested feature is subscription-gated.
+5. **Resource scope:** query tenant-owned data using the authenticated
+   `workspaceId`, never a browser-supplied workspace as proof of access.
+
+Passing one gate never bypasses another. For example, a valid Auth0 session
+does not make someone a workspace member, `billing:manage` does not activate a
+subscription, and a successful Stripe Checkout does not authorize the person
+who returns to the application.
+
+### Auth0: identity and session security
+
+OpenChair uses Auth0 as an OIDC provider through the authorization-code flow
+with PKCE. Login transactions are protected with `state` and `nonce`; returned
+JWTs must use RS256 and are verified against the tenant's JWKS. Issuer,
+audience/authorized-party, expiry, not-before, nonce, and access-token hash
+claims are validated before a local session is created.
+
+The application maps Auth0's stable `iss + sub` pair to an internal `userId`.
+Email is profile data, not an authorization key. The resulting session is
+AES-GCM encrypted and authenticated in an `__Host-` cookie with `HttpOnly`,
+`Secure`, and `SameSite=Lax`. The session remembers the selected workspace for
+navigation, but every protected request still rechecks active membership in
+D1. This makes a suspension or permission denial effective on the next request
+instead of waiting for the Auth0 session to expire.
+
+Auth0 Organization and token role/permission claims are verified assertions.
+They can help seed an initial local organization membership and are exposed
+separately by `GET /api/v1/me`, but they never replace the authoritative D1
+membership and permission checks. The platform-operator grant is also persisted
+separately and rechecked in D1; it is not a normal workspace role.
+
+### Granular workspace access
+
+Roles provide a safe baseline:
+
+| Role | Effective baseline |
+| --- | --- |
+| Owner | Manage workspace, members, billing, funds, and product access |
+| Administrator | Same permission set as owner, but cannot manage an owner |
+| Billing administrator | View the workspace, manage billing, and use the product |
+| Member | View the workspace and use the product |
+
+The canonical permissions are:
+
+| Permission | Protects |
+| --- | --- |
+| `workspace:view` | Reading workspace-scoped screens and records |
+| `workspace:manage` | Workspace configuration |
+| `members:manage` | Membership, role, suspension, and permission changes |
+| `billing:manage` | Checkout and Customer Portal creation |
+| `funds:view` | Financial record visibility |
+| `funds:manage` | Funding and ledger mutations |
+| `product:use` | Core OpenChair product workflows |
+
+Administrators can apply per-member `allow` or `deny` overrides. Only the
+difference from the member's role is stored, and the backend recalculates the
+effective set on every protected request. Owner protections remain separate:
+an administrator cannot change an owner's access, users cannot suspend
+themselves, active members must retain `workspace:view`, and a team cannot lose
+its final active owner or administrator. Membership, role, suspension, and
+granular-permission changes are written to the audit log.
+
+Personal beneficiary workspaces remain single-user and do not expose nested
+roles. Team service-provider and nonprofit workspaces can collaborate, but all
+queries, events, jobs, cache keys, realtime channels, and storage objects must
+retain `workspaceId` so data cannot cross tenant boundaries.
+
+### Stripe: billing and entitlement security
+
+Stripe Checkout and the Customer Portal are created only by authenticated
+server handlers with `billing:manage`. Billing mutations reject a mismatched
+`Origin`, require HTTPS outside localhost, and keep Stripe credentials
+server-side. Catalog Price IDs come only from server configuration; the browser
+cannot submit an arbitrary Price ID. Dynamic monthly pricing is validated
+server-side, limited to nonprofit workspaces, and requires an idempotency key.
+Stripe customers, Checkout Sessions, and subscriptions carry the internal
+`workspaceId` as metadata, while local records keep provider IDs separate from
+application IDs.
+
+The Checkout success URL is informational. It never enables the product.
+Subscription access changes only through the webhook pipeline:
+
+1. read the unmodified request body;
+2. verify the `Stripe-Signature` HMAC and timestamp tolerance;
+3. reject test/live-mode mismatches;
+4. atomically claim the Stripe event so duplicate delivery is idempotent;
+5. match the Stripe customer back to exactly one local workspace;
+6. accept only allowlisted catalog Prices or a validated dynamic product and
+   amount;
+7. project the subscription status to the workspace's `platform_access`
+   entitlement.
+
+`active` and `trialing` subscriptions grant access. `past_due` grants only the
+configured, time-limited grace state; incomplete, unpaid, canceled, paused, or
+unrecognized pricing fails closed to inactive. Older webhook deliveries cannot
+overwrite a newer subscription projection.
+
+Keep Auth0 client secrets, the session secret, Stripe restricted/secret keys,
+and webhook signing secrets out of source control. Local development uses the
+ignored `.env.local`; each deployed environment should use separate,
+least-privilege credentials in its selected host's secret store.
+
 ## Verification
 
 ```bash
