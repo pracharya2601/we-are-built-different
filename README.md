@@ -1,32 +1,102 @@
-# OpenChair Care Capacity Control Plane
+# OpenChair
 
-OpenChair’s current operational foundation for authentication, tenant
-workspaces, participant roles, sponsor funding records, optional Stripe
-billing, and durable access state. It runs on localhost while the care-capacity
-experience is developed separately.
+OpenChair turns canceled healthcare appointments into privately claimed,
+sponsor-funded care—starting with dental.
 
-## What is included
+When a clinic receives a last-minute cancellation, the chair normally sits
+empty while someone nearby may be waiting for care they cannot afford.
+OpenChair lets the clinic release that opening at a reduced price, lets a
+community sponsor fund part of the care, and helps one eligible patient claim
+the appointment privately. The clinic recovers useful capacity, the sponsor
+funds a specific care opportunity, and the patient receives treatment without
+public fundraising.
 
-- Auth0-compatible OIDC login, session, logout, and optional organization pinning
-- service-provider, nonprofit, and beneficiary account policies
-- personal and team workspaces with fail-closed membership checks
-- owner, administrator, billing administrator, and member roles
-- per-member granular permission overrides with audited changes
-- workspace creation, switching, member provisioning, and immediate suspension
-- benefactor, beneficiary, and service-provider participant records
-- workspace funding pools with balanced, immutable ledger entries
-- optional Stripe Checkout and Customer Portal flows
-- signed, idempotent Stripe webhook ingestion
-- private, workspace-scoped Cloudflare R2 image uploads
-- verified upload completion with durable file-metadata delivery
-- owner-only, encrypted, queue-backed Vapi call automation
-- OpenChair appointment, workflow, beneficiary, outreach, and projection
-  contracts with deterministic fixture previews
-- appointment funding: approval, sponsor/patient Checkout, refunds, and a
-  separately signed Stripe webhook, kept apart from SaaS subscriptions
-- D1/Drizzle records for identity, membership, billing, entitlements, and events
-- a product-facing `platform_access` entitlement
-- a validated pricing router for catalog or dynamic monthly Checkout amounts
+## How the product works
+
+The OpenChair journey is **release, fund, match, contact, and fill**:
+
+1. **A clinic releases a chair.** A service provider publishes an available
+   appointment with its time, treatment, location, discounted price, funding
+   split, and claim cutoff.
+2. **Eligible patients are shortlisted.** A nonprofit verifies beneficiaries
+   and orders candidates who are available, have the required consent, and are
+   in the same city as the clinic. Missing or mismatched location data fails
+   closed.
+3. **A sponsor funds its share.** An approved sponsor contribution is collected
+   through Stripe Checkout. OpenChair waits for a signed Stripe webhook before
+   treating the contribution as paid.
+4. **Candidates are contacted privately.** Consent-aware outreach contacts
+   candidates in order. Vapi can provide the call transport, but its output
+   cannot reserve a patient by itself.
+5. **One patient is reserved.** The versioned workflow accepts only one
+   candidate, preventing two simultaneous acceptances from filling the same
+   chair.
+6. **The patient pays the remaining share.** Patient Checkout begins only
+   after reservation. A second verified Stripe event confirms the payment.
+7. **The chair is filled.** OpenChair reaches `CHAIR_FILLED` only when one
+   patient is reserved and both required contributions are verified. The
+   clinic can then complete or cancel the visit.
+
+The browser never declares an appointment paid, chooses the official workflow
+stage, or writes directly to the database. Checkout returns, visible buttons,
+AI call outcomes, and client-supplied workspace IDs are signals—not proof.
+Authoritative changes happen in workspace-scoped backend commands after the
+relevant membership, permission, relationship, workflow version, consent, and
+provider event have been checked.
+
+### Who uses OpenChair
+
+| Product participant | Role in the care journey |
+| --- | --- |
+| Clinic or service provider | Releases canceled appointments, manages availability, and delivers care |
+| Nonprofit staff | Verifies beneficiaries, reviews eligibility, and orders candidates |
+| Sponsor | Approves and pays the sponsor contribution for an appointment |
+| Beneficiary or patient | Gives consent, privately accepts an opening, and pays any patient share |
+| Platform operator | Monitors automation and operational failures without becoming a workspace administrator |
+
+Product participants are not the same as workspace authorization roles. For
+example, `sponsor` describes a relationship to one appointment, while
+`admin`, `billing_admin`, and `member` describe what a person may do inside a
+workspace. Both the workspace permission and the appointment relationship must
+be valid when an action requires both.
+
+## What this repository implements
+
+This repository is the operational control plane and current MVP vertical
+slice. It is a vinext/TypeScript modular monolith running as a Cloudflare
+Worker, with D1/Drizzle persistence and provider integrations kept behind
+internal ports.
+
+Implemented foundations include:
+
+- Auth0 OIDC login, encrypted sessions, logout, and optional Organization
+  assertions;
+- personal and collaborative tenant workspaces with audited roles, granular
+  permission overrides, switching, provisioning, and immediate suspension;
+- service-provider, nonprofit, and beneficiary account policies;
+- durable appointment and versioned workflow records with idempotent commands,
+  history, and outbox effects;
+- city-scoped eligibility and matching rules with consent-aware beneficiary
+  contracts;
+- sponsor and patient appointment-funding requests, Stripe Checkout, verified
+  payments, refunds, and append-only funding records;
+- a separate Stripe SaaS subscription system that projects the
+  `platform_access` entitlement for a workspace;
+- workspace funding pools, benefactor deposits, and balanced immutable ledger
+  entries;
+- clinic-wide Google Calendar availability and appointment synchronization;
+- private, workspace-scoped Cloudflare R2 image uploads;
+- encrypted, queue-backed Vapi call automation with authenticated callbacks;
+- role-safe appointment projections that limit both visible data and available
+  actions; and
+- deterministic service, security, tenant-isolation, workflow, and provider
+  contract tests.
+
+The appointment workflow and infrastructure are active development areas.
+Beneficiary management UI, production candidate ordering, and the complete
+OpenChair outreach persistence/dispatch loop are not yet finished. Stripe
+Connect payouts are also intentionally outside the current MVP: a verified
+Checkout means funds were collected, not that a clinic was paid.
 
 ## Local development
 
@@ -163,40 +233,67 @@ roles. Team service-provider and nonprofit workspaces can collaborate, but all
 queries, events, jobs, cache keys, realtime channels, and storage objects must
 retain `workspaceId` so data cannot cross tenant boundaries.
 
-### Stripe: billing and entitlement security
+### Stripe: three isolated money paths
 
-Stripe Checkout and the Customer Portal are created only by authenticated
-server handlers with `billing:manage`. Billing mutations reject a mismatched
-`Origin`, require HTTPS outside localhost, and keep Stripe credentials
-server-side. Catalog Price IDs come only from server configuration; the browser
-cannot submit an arbitrary Price ID. Dynamic monthly pricing is validated
-server-side, limited to nonprofit workspaces, and requires an idempotency key.
-Stripe customers, Checkout Sessions, and subscriptions carry the internal
-`workspaceId` as metadata, while local records keep provider IDs separate from
+OpenChair does not treat every Stripe payment as the same kind of money:
+
+| Stripe path | Purpose | Result inside OpenChair |
+| --- | --- | --- |
+| SaaS subscription billing | Charges a workspace for using the software | Updates only the workspace's `platform_access` entitlement |
+| Program-fund deposits | Lets a verified benefactor contribute to a workspace funding pool | Posts a balanced, immutable program-ledger transaction |
+| Appointment funding | Collects the sponsor and patient shares for one chair | Updates only that appointment's payment and workflow facts |
+
+Each path has its own configuration, signing secret, webhook endpoint,
+idempotency scope, provider-event records, and domain checks. A subscription
+event cannot post money to a funding pool, a program deposit cannot mark an
+appointment paid, and an appointment Checkout cannot activate SaaS access.
+Stripe Connect payouts are not implemented, so none of these events proves
+that a clinic received a payout.
+
+SaaS Checkout and the Customer Portal require `billing:manage`. Program-fund
+deposits require an active workspace membership plus a verified benefactor
+relationship. Appointment funding requires an active membership plus the
+applicable clinic, nonprofit, sponsor, patient, or administrator relationship
+and the correct workflow stage. These checks run before the application
+touches Stripe configuration, so an unauthorized caller receives a permission
+denial rather than provider information.
+
+All Stripe operations keep provider credentials server-side. Catalog Price IDs
+come only from server configuration; the browser cannot submit an arbitrary
+Price ID. Dynamic monthly SaaS pricing is validated server-side, limited to
+nonprofit workspaces, and requires an idempotency key. Customers, Checkout
+Sessions, subscriptions, deposits, and appointment payments carry scoped
+internal references, while local records keep provider IDs separate from
 application IDs.
 
-The Checkout success URL is informational. It never enables the product.
-Subscription access changes only through the webhook pipeline:
+A Checkout success URL is always informational. It never enables the product,
+posts a deposit, or marks an appointment paid. Authoritative payment and
+subscription changes use the corresponding webhook pipeline:
 
 1. read the unmodified request body;
 2. verify the `Stripe-Signature` HMAC and timestamp tolerance;
 3. reject test/live-mode mismatches;
 4. atomically claim the Stripe event so duplicate delivery is idempotent;
-5. match the Stripe customer back to exactly one local workspace;
-6. accept only allowlisted catalog Prices or a validated dynamic product and
-   amount;
-7. project the subscription status to the workspace's `platform_access`
-   entitlement.
+5. correlate the provider object to exactly one workspace-scoped local record;
+6. validate the path-specific customer, metadata, amount, currency, Price,
+   payment state, and workflow invariants;
+7. project the verified fact into only the owning billing, ledger, or
+   appointment domain.
 
-`active` and `trialing` subscriptions grant access. `past_due` grants only the
-configured, time-limited grace state; incomplete, unpaid, canceled, paused, or
-unrecognized pricing fails closed to inactive. Older webhook deliveries cannot
-overwrite a newer subscription projection.
+For SaaS access, `active` and `trialing` subscriptions grant access. `past_due`
+grants only the configured, time-limited grace state; incomplete, unpaid,
+canceled, paused, or unrecognized pricing fails closed to inactive. Older
+webhook deliveries cannot overwrite a newer subscription projection. Program
+and appointment payments use their own append-only records and never rewrite
+completed financial history.
 
-Keep Auth0 client secrets, the session secret, Stripe restricted/secret keys,
-and webhook signing secrets out of source control. Local development uses the
-ignored `.env.local`; each deployed environment should use separate,
-least-privilege credentials in its selected host's secret store.
+Keep Auth0 client secrets, the session secret, Stripe API keys, and webhook
+signing secrets out of source control. Local development uses the ignored
+`.env.local`; each deployed environment should use separate credentials for
+each environment and money path in its selected host's secret store.
+Production hardening should migrate broad Stripe secret keys to minimally
+permissioned restricted keys wherever the required API operations support
+them.
 
 ## Verification
 
